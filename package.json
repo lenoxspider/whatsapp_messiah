@@ -25,6 +25,7 @@
     "@whiskeysockets/baileys": "^6.7.19",
     "better-sqlite3": "^11.8.1",
     "dotenv": "^16.4.7",
+    "express": "^4.22.3",
     "node-cron": "^3.0.3",
     "openai": "^4.86.1",
     "pino": "^9.6.0",
@@ -33,6 +34,7 @@
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",
+    "@types/express": "^5.0.6",
     "@types/node": "^22.13.9",
     "@types/node-cron": "^3.0.11",
     "@types/qrcode-terminal": "^0.12.2",

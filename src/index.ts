@@ -2,6 +2,7 @@ import { initializeDatabaseSchema } from './db/schema.js';
 import { startWhatsAppSocket, getActiveSocket } from './core/connection.js';
 import { routeIncomingMessage } from './engine/router.js';
 import { schedulerService } from './services/scheduler.service.js';
+import { startDashboardServer } from './server/app.js';
 import { env } from './config/env.js';
 
 async function bootstrap() {
@@ -23,7 +24,11 @@ async function bootstrap() {
   schedulerService.setSocketProvider(() => getActiveSocket());
   schedulerService.start();
 
-  // 3. Launch Baileys Multi-Device connection
+  // 3. Start Web Dashboard control plane
+  const port = Number(process.env.PORT) || 3000;
+  await startDashboardServer(port);
+
+  // 4. Launch Baileys Multi-Device connection
   await startWhatsAppSocket({
     onReady: (sock) => {
       console.log(`🚀 [Ready] Listening for commands and contact messages.`);

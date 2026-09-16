@@ -1,6 +1,7 @@
 import type { WASocket, ConnectionState } from '@whiskeysockets/baileys';
 import qrcode from 'qrcode-terminal';
 import { env } from '../config/env.js';
+import { dashboardState } from '../server/state.js';
 
 export async function handlePairing(
   sock: WASocket,
@@ -8,6 +9,11 @@ export async function handlePairing(
   isRegistered: boolean
 ): Promise<void> {
   const { qr } = update;
+
+  // Sync QR code to web dashboard whenever available
+  if (qr && !isRegistered) {
+    dashboardState.setQR(qr);
+  }
 
   // Case 1: Terminal QR Code requested
   if (env.pairingMethod === 'qr' && qr && !isRegistered) {
@@ -17,19 +23,13 @@ export async function handlePairing(
   }
 
   // Case 2: 8-digit Pairing Code requested (ideal for headless VPS over SSH)
-  if (env.pairingMethod === 'code' && !isRegistered) {
-    if (!env.phoneNumber) {
-      console.error('\n[Pairing Error] PHONE_NUMBER is required in .env when PAIRING_METHOD=code.');
-      console.error('Format: international digits only, e.g. 15551234567\n');
-      return;
-    }
-
+  if (env.pairingMethod === 'code' && !isRegistered && env.phoneNumber) {
     try {
-      // Small delay to allow socket registration handshake
       setTimeout(async () => {
         try {
           const code = await sock.requestPairingCode(env.phoneNumber);
           const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code;
+          dashboardState.setPairingCode(formattedCode);
 
           console.log('\n=============================================================');
           console.log('         WHATSAPP MESSIAH - 8-DIGIT PAIRING CODE            ');

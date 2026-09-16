@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Messiah | Ghost Sentinel & Contacts</title>
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/navbar.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/pages.css">
+</head>
+<body>
+
+  <!-- Shared App Header -->
+  <header class="app-header">
+    <a href="/" class="brand-container">
+      <div class="brand-logo">🕊️</div>
+      <div class="brand-text">
+        <h1>MESSIAH</h1>
+        <span>WhatsApp Control Plane</span>
+      </div>
+    </a>
+
+    <nav>
+      <ul class="nav-links">
+        <li><a href="/" class="nav-link">🔗 Connection</a></li>
+        <li><a href="/config.html" class="nav-link">⚙️ Config</a></li>
+        <li><a href="/vault.html" class="nav-link">🧠 Second Brain</a></li>
+        <li><a href="/contacts.html" class="nav-link active">🛡️ Ghost Sentinel</a></li>
+      </ul>
+    </nav>
+
+    <div class="header-status">
+      <div id="global-status-badge" class="status-badge disconnected">
+        <span class="status-dot"></span>
+        <span id="global-status-text">Disconnected</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="page-title-block">
+      <h2>Ghost Sentinel &amp; Anti-Revoke Vault</h2>
+      <p>Configure contact tiers, selective blue-tick deafness, and inspect intercepted revoked messages.</p>
+    </div>
+
+    <!-- View Switcher Tabs -->
+    <div class="tabs-header">
+      <button id="tab-contacts-btn" class="tab-btn active">👥 Contact Tiers &amp; Personas</button>
+      <button id="tab-revoked-btn" class="tab-btn">🛡️ Anti-Revoke Intercepts</button>
+    </div>
+
+    <!-- Tab 1: Contacts Table -->
+    <div id="view-contacts" class="card" style="padding: 0;">
+      <div class="data-table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Contact</th>
+              <th>Relationship Tier</th>
+              <th>Persona Status</th>
+              <th>Last Interaction</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="contacts-tbody">
+            <tr><td colspan="5" style="text-align: center; color: var(--text-dim); padding: 2rem;">Loading contacts...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tab 2: Anti-Revoke Audit Table -->
+    <div id="view-revoked" class="card" style="padding: 0; display: none;">
+      <div class="data-table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Sender</th>
+              <th>Preserved Content ("Deleted for Everyone")</th>
+              <th>Attempted Delete Time</th>
+              <th>Vault Status</th>
+            </tr>
+          </thead>
+          <tbody id="revoked-tbody">
+            <tr><td colspan="4" style="text-align: center; color: var(--text-dim); padding: 2rem;">Loading revoked messages...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal for Custom Persona Editor -->
+  <div id="persona-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="card-title">
+        <span>✏️</span> Custom Persona for <span id="modal-contact-name" style="color: var(--accent-cyan);">Contact</span>
+      </div>
+      <div class="card-subtitle">
+        Overrides the standard tier prompt. The bot will adopt these instructions specifically when replying to this contact.
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="modal-persona-input">System Prompt / Instructions</label>
+        <textarea id="modal-persona-input" class="form-textarea" placeholder="e.g. You are texting your brother. Be very sarcastic and reference our plans to go to the gym on Saturday." style="min-height: 140px;"></textarea>
+      </div>
+
+      <div style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem;">
+        <button type="button" id="modal-close-btn" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="modal-save-persona-btn" class="btn btn-primary">Save Persona</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/js/nav.js"></script>
+  <script type="module" src="/js/pages/contacts.js"></script>
+</body>
+</html>

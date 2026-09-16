@@ -23,7 +23,11 @@ A personal WhatsApp daemon combining a **Second Brain** (message-to-self capture
   * Tier 3 (Business): Courteous holding response.
   * Tier 4 (Strangers): Neutral/minimal.
   * Tier 5 (Ignore): Complete silence + zero blue ticks.
-* **Discord Emergency Escalation**: Automatically alerts your private Discord channel if urgent keywords (e.g. *hospital*, *urgent*, *wire*) are detected.
+### 3. Web Control Dashboard (Multi-Page Control Plane)
+* **Live Pairing Hub (`http://localhost:3000/`)**: View real-time WhatsApp QR code or generate and display the 8-digit pairing code directly in your browser.
+* **Credentials & AI Config (`/config.html`)**: Update OpenAI API keys, test models, test Discord webhooks, and adjust typing speeds with immediate persistence.
+* **Second Brain Vault (`/vault.html`)**: Interactive FTS5 search across all your saved notes, quick-add note form, and scheduled reminders tracker.
+* **Ghost Sentinel & Anti-Revoke (`/contacts.html`)**: Set relationship tiers (1–5) per contact, write custom AI personas, and review the Anti-Revoke audit log of intercepted messages.
 
 ---
 

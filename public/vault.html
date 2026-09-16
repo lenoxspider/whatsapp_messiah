@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Messiah | Second Brain Vault</title>
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/navbar.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/pages.css">
+</head>
+<body>
+
+  <!-- Shared App Header -->
+  <header class="app-header">
+    <a href="/" class="brand-container">
+      <div class="brand-logo">🕊️</div>
+      <div class="brand-text">
+        <h1>MESSIAH</h1>
+        <span>WhatsApp Control Plane</span>
+      </div>
+    </a>
+
+    <nav>
+      <ul class="nav-links">
+        <li><a href="/" class="nav-link">🔗 Connection</a></li>
+        <li><a href="/config.html" class="nav-link">⚙️ Config</a></li>
+        <li><a href="/vault.html" class="nav-link active">🧠 Second Brain</a></li>
+        <li><a href="/contacts.html" class="nav-link">🛡️ Ghost Sentinel</a></li>
+      </ul>
+    </nav>
+
+    <div class="header-status">
+      <div id="global-status-badge" class="status-badge disconnected">
+        <span class="status-dot"></span>
+        <span id="global-status-text">Disconnected</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="page-title-block">
+      <h2>Second Brain Vault &amp; FTS5 Explorer</h2>
+      <p>Search all thoughts, articles, links, and auto-captured WhatsApp messages with full-text search.</p>
+    </div>
+
+    <!-- Top Bar: Search & Quick Note Creation -->
+    <div class="card" style="margin-bottom: 2rem;">
+      <div class="vault-header-bar">
+        <div class="search-input-wrapper">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="vault-search-input" class="form-input" placeholder="Full-text search notes, tags (#work), or links..." />
+        </div>
+      </div>
+
+      <!-- Quick Add Note Form -->
+      <form id="new-note-form" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        <input type="text" id="new-note-content" class="form-input" placeholder="Type a quick note or paste a URL..." style="flex: 3; min-width: 260px;" required />
+        <input type="text" id="new-note-tag" class="form-input" placeholder="Tag (e.g. work, idea, link)" style="flex: 1; min-width: 120px;" />
+        <button type="submit" class="btn btn-primary" style="flex-shrink: 0;">+ Save Note</button>
+      </form>
+    </div>
+
+    <!-- Notes & Reminders Grid -->
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
+      <!-- Notes Grid -->
+      <div>
+        <div class="card-title" style="margin-bottom: 1rem;">
+          <span>📝</span> Captured Notes
+        </div>
+        <div id="notes-grid" class="notes-grid">
+          <div style="color: var(--text-dim);">Loading vault notes...</div>
+        </div>
+      </div>
+
+      <!-- Reminders Column -->
+      <div>
+        <div class="card-title" style="margin-bottom: 1rem;">
+          <span>⏰</span> Scheduled Reminders
+        </div>
+        <div class="card" style="padding: 1.25rem;">
+          <div id="reminders-list" class="reminders-list">
+            <div style="color: var(--text-dim);">Loading scheduled reminders...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="/js/nav.js"></script>
+  <script type="module" src="/js/pages/vault.js"></script>
+</body>
+</html>
