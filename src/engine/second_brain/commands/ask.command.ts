@@ -4,6 +4,8 @@ import { noteRepo } from '../../../db/repositories/note.repo.js';
 import { reminderRepo } from '../../../db/repositories/reminder.repo.js';
 import { contactRepo } from '../../../db/repositories/contact.repo.js';
 import { messageRepo } from '../../../db/repositories/message.repo.js';
+import { webSearchService } from '../../../services/web_search.service.js';
+import { systemRunnerService } from '../../../services/system_runner.service.js';
 
 export const askCommand: CommandHandler = {
   name: 'ask',
@@ -158,6 +160,101 @@ export const askCommand: CommandHandler = {
             is_view_once: Boolean(m.is_view_once),
             has_media: Boolean(m.media_path)
           }));
+        }
+
+        case 'web_search': {
+          const q = String(args.query || '').trim();
+          if (!q) throw new Error('Search query is required');
+          const limit = Math.min(Number(args.limit) || 5, 10);
+          const results = await webSearchService.search(q, limit);
+          return {
+            query: q,
+            results_count: results.length,
+            results
+          };
+        }
+
+        case 'run_system_command': {
+          const cmd = String(args.command || '').trim();
+          if (!cmd) throw new Error('Command is required');
+          const res = await systemRunnerService.execute(cmd);
+          return res;
+        }
+
+        case 'send_whatsapp_message': {
+          const target = String(args.target || '').trim();
+          const msgText = String(args.message || '').trim();
+          if (!target || !msgText) throw new Error('Target contact and message text are required');
+
+          let targetJid = '';
+          const contact = contactRepo.searchContact(target);
+          if (contact) {
+            targetJid = contact.jid;
+          } else {
+            const cleanDigits = target.replace(/[^0-9]/g, '');
+            if (cleanDigits.length >= 7) {
+              targetJid = `${cleanDigits}@s.whatsapp.net`;
+            } else if (target.includes('@')) {
+              targetJid = target;
+            }
+          }
+
+          if (!targetJid) {
+            throw new Error(`Could not resolve contact "${target}" to a valid WhatsApp number.`);
+          }
+
+          await sock.sendMessage(targetJid, { text: msgText });
+          return {
+            status: 'sent',
+            target_jid: targetJid,
+            target_name: contact?.name || target,
+            message_sent: msgText,
+            timestamp: new Date().toISOString()
+          };
+        }
+
+        case 'create_poll': {
+          const target = String(args.target || '').trim();
+          const question = String(args.question || '').trim();
+          const options = Array.isArray(args.options) ? args.options.map(String) : [];
+
+          if (!target || !question || options.length < 2) {
+            throw new Error('Target, question, and at least 2 options are required for a poll.');
+          }
+
+          let targetJid = '';
+          const contact = contactRepo.searchContact(target);
+          if (contact) {
+            targetJid = contact.jid;
+          } else {
+            const cleanDigits = target.replace(/[^0-9]/g, '');
+            if (cleanDigits.length >= 7) {
+              targetJid = `${cleanDigits}@s.whatsapp.net`;
+            } else if (target.includes('@')) {
+              targetJid = target;
+            }
+          }
+
+          if (!targetJid) {
+            throw new Error(`Could not resolve contact "${target}" to a valid WhatsApp number.`);
+          }
+
+          await sock.sendMessage(targetJid, {
+            poll: {
+              name: question,
+              values: options,
+              selectableCount: 1
+            }
+          });
+
+          return {
+            status: 'poll_created',
+            target_jid: targetJid,
+            target_name: contact?.name || target,
+            question,
+            options,
+            timestamp: new Date().toISOString()
+          };
         }
 
         default:
