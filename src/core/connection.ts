@@ -49,7 +49,19 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
     printQRInTerminal: false,
     auth: state,
     generateHighQualityLinkPreview: true,
-    browser: Browsers.ubuntu('Chrome')
+    browser: ['Ubuntu', 'Android', '24.0.4'],
+    getMessage: async (key) => {
+      if (key.id) {
+        const msg = messageRepo.getMessageById(key.id);
+        if (msg?.raw_payload_json) {
+          try {
+            const parsed = JSON.parse(msg.raw_payload_json);
+            return parsed.message || undefined;
+          } catch {}
+        }
+      }
+      return undefined;
+    }
   });
 
   activeSocket = sock;
