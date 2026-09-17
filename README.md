@@ -1,76 +1,168 @@
 # WhatsApp Messiah 🕊️
 
-A personal WhatsApp daemon combining a **Second Brain** (message-to-self capture, full-text search, time-based reminders, and OpenAI queries) with a **Messiah Ghost-Handler** (contact-tiered replies, presence simulation with realistic typing latency, selective deafness, anti-revoke message preservation, and Discord emergency escalations).
+> **Personal WhatsApp Second Brain & Autonomous Messiah Ghost-Handler Daemon**  
+> Dense, dark `#0B0D0E`, keyboard-driven operations console with forensic intelligence, living memory, and zero-database vector hybrid search.
 
 ---
 
-## Features
+## ⚡ What Can WhatsApp Messiah Do?
 
-### 1. Second Brain (Control Plane)
-* **Message Yourself as Inbox**: Forward any message, link, or note to your own number; Messiah automatically indexes and tags it.
-* **Full-Text Search (`!find <query>`)**: Instant SQLite FTS5 search across your notes and message archive.
-* **Natural Language Reminders (`!remind in 30m <task>`)**: Time-delayed notifications dispatched directly into your chat.
-* **OpenAI Brain (`!ask <question>`)**: Context-aware answering using your saved memories and notes.
-* **Digest (`!digest`)**: A snapshot of your recent captures and pending reminders.
-
-### 2. Messiah Ghost-Handler
-* **Presence & Typing Simulation**: Generates human typing intervals based on character length and random jitter before sending replies.
-* **Selective Deafness (Zero Blue Ticks)**: Read receipts (`readMessages`) are selectively sent only to approved contact tiers. Unknown callers and ignored contacts remain permanently unread.
-* **Anti-Revoke / Silent Archiving**: Intercepts `ProtocolMessage.REVOKE` ("Delete for everyone"). The original message text and timestamp are preserved in SQLite, and an alert is sent to Discord.
-* **Contact Tiers (1 to 5)**:
-  * Tier 1 (Inner circle): Authentic persona mirroring your tone.
-  * Tier 2 (Acquaintances): Casual deflection ("super busy with work, will hit you up").
-  * Tier 3 (Business): Courteous holding response.
-  * Tier 4 (Strangers): Neutral/minimal.
-  * Tier 5 (Ignore): Complete silence + zero blue ticks.
-### 3. Web Control Dashboard (Multi-Page Control Plane)
-* **Live Pairing Hub (`http://localhost:3000/`)**: View real-time WhatsApp QR code or generate and display the 8-digit pairing code directly in your browser.
-* **Credentials & AI Config (`/config.html`)**: Update OpenAI API keys, test models, test Discord webhooks, and adjust typing speeds with immediate persistence.
-* **Second Brain Vault (`/vault.html`)**: Interactive FTS5 search across all your saved notes, quick-add note form, and scheduled reminders tracker.
-* **Ghost Sentinel & Anti-Revoke (`/contacts.html`)**: Set relationship tiers (1–5) per contact, write custom AI personas, and review the Anti-Revoke audit log of intercepted messages.
+WhatsApp Messiah turns your personal WhatsApp account into an autonomous intelligence machine. It operates in two parallel engines:
+1. **Second Brain**: Your personal capture vault, task scheduler, semantic search engine, and autonomous tool-calling AI agent.
+2. **Messiah Ghost-Handler**: An autonomous persona engine that mimics your texting cadence, remembers personal details about contacts, silently rejects inbound calls, preserves deleted messages/media, and intercepts ephemeral View-Once media.
 
 ---
 
-## Setup & Configuration
+## 📋 Comprehensive Feature Matrix
 
-### 1. Environment Configuration
-Copy `.env.example` to `.env` and fill in your details:
+### 🧠 1. Autonomous Second Brain & AI Agent
 
-```env
-# Pairing method: 'code' (for headless VPS) or 'qr' (terminal QR)
-PAIRING_METHOD=code
+| Feature | Capability & Behavior | How to Use |
+|---|---|---|
+| **Autonomous Tool-Calling Agent** | `!ask` connects directly to your private SQLite database using OpenAI tool calling (function calling). It can inspect contacts, schedule reminders, create notes, search the vault, and query deleted message forensics. | `!ask Remind me Friday at 2pm to call Kofi`<br>`!ask What did I decide about the VPS?`<br>`!ask Set contact +233501234567 to Tier 1 VIP`<br>`!ask What deleted messages do we have from John?` |
+| **Hybrid Semantic + Keyword Search** | Combines SQLite FTS5 (BM25) with vector embeddings (`text-embedding-3-small`, 1536-dim Float32Array BLOBs) using **Reciprocal Rank Fusion (RRF)**. Finds notes by concept even with 0 overlapping keywords. | `!find that thing about the server`<br>(finds *"Hetzner baremetal in Frankfurt"*) |
+| **Whisper Voice Note Transcription** | Record or forward any voice memo to yourself in self-chat. Messiah passes the audio to OpenAI `whisper-1`, captures the text into your vault under `#voice`, and replies with the transcript. | Send any voice note to your self-chat |
+| **Passive Inbox & URL Capture** | Forward any thought, link, or message to yourself. Messiah automatically tags URLs as `#link` and thoughts as `#inbox`. | Send or forward any message in self-chat |
+| **Natural Language Task Reminders** | Schedule delayed notifications. Background cron triggers alerts at the exact time. | `!remind in 45m Submit invoice`<br>`!remind tomorrow at 9am Review pull request` |
+| **Daily Capture Digest** | Receive a snapshot of recent captures and pending reminders. | `!digest` |
+| **Prompt-Injection Hardening** | Strictly JID-whitelisted: **only your own account (`fromMe = true`) can invoke agent tools**. Inbound messages are treated as passive untrusted data inside `<untrusted_content>` tags. | Automated security guard |
 
-# Phone number in international format without '+' or spaces (e.g. 15551234567)
-PHONE_NUMBER=15551234567
+---
 
-# Your WhatsApp JID (phone_number@s.whatsapp.net)
-OWNER_JID=15551234567@s.whatsapp.net
+### 🛡️ 2. Messiah Ghost-Handler & Forensic Intelligence
 
-# OpenAI API Key for second brain and persona generation
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4o
+| Feature | Capability & Behavior | Technical Detail |
+|---|---|---|
+| **Anti-ViewOnce Interception** | Intercepts ephemeral View-Once photos, voice notes, and videos. Decrypts and saves them permanently to `data/media/` before they vanish, and forwards them instantly to Discord. | Baileys companion handshake emulates `Platform.ANDROID` with multi-wrapper protobuf unwrapping. |
+| **Anti-Revoke 2.0 (Message Preservation)** | Intercepts `ProtocolMessage.REVOKE` ("Delete for everyone"). Preserves original text, photos, audio notes, and video payloads in SQLite with exact revocation timing. | Evidence inspectable via Web Console with dark audio/video players and JSON/CSV export. |
+| **Stealth Call Rejecter** | Silently and automatically rejects all inbound voice and video WhatsApp calls (`sock.rejectCall`). No ring, no voicemail, zero interruption. | Calls logged to SQLite with caller JID and timestamp; instant alert sent to Discord. |
+| **Per-Contact Living Memory** | Inbound messages from contacts trigger an asynchronous background AI extractor that captures durable personal facts (family, jobs, locations, preferences, commitments) into `contact_facts`. | Living memory is automatically injected into the Messiah Ghost persona generator. |
+| **Voice Fingerprinting & Style Mimicry** | Samples your sent messages (`from_me = 1`) to extract your natural casing quirks, slang, sentence length, and emoji frequency. Replies sound like *you*, not a bot. | Auto-generated style guide injected into ghost replies; cached for 6 hours. |
+| **Humanized Presence & Timing Simulation** | Emulates realistic human latency: a **2.5s–8s reflection delay** before picking up the phone, plus dynamic typing speed with natural **800ms mid-typing pauses** on long replies. | WhatsApp `composing` and `paused` presence simulation with randomized jitter. |
+| **Selective Deafness (Blue Tick Control)** | Selectively sends read receipts (`readMessages`) only to approved tiers. Ignored contacts and unknown callers remain permanently unread. | Configured via contact tiers. |
+| **Emergency Discord Escalations** | Detects urgent keywords ("emergency", "hospital", "urgent", "call me now") or high-priority messages and pings your Discord webhook, holding autonomous replies for manual review. | Discord rich embed with actionable links. |
 
-# Discord Webhook URL for escalations and anti-revoke alerts
-DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+---
+
+### 👥 3. 5-Tier Contact Relationship Board
+
+Contacts are categorized into 5 tiers that dictate autonomous reply behavior:
+
+* **🟢 Tier 1 (Inner Circle / VIP):** Close friends and family. Receives warm, authentic replies matching your tone; leverages personal notes from your vault; blue ticks enabled.
+* **🔵 Tier 2 (Acquaintance):** Friendly and casual, but non-committal. Automatically deflects meetup requests ("super busy with projects, will hit you up later").
+* **🟣 Tier 3 (Business / Work):** Courteous and brief. Confirms receipt and notes that you are away from your desk and will review properly.
+* **🟡 Tier 4 (Stranger / Unknown):** Guarded and minimal ("Hey, who is this?").
+* **🔴 Tier 5 (Ghost / Mute):** Complete silence. Zero automated replies and permanent grey ticks.
+
+---
+
+### 🌐 4. Operations Control Plane (Web Dashboard)
+
+Password-gated control plane running at `http://localhost:3000` (and on your VPS public IP):
+
+* **⚡ Operations Console (`/`):** Real-time WhatsApp socket state, uptime counter, live message audit log with tier badges, danger controls (restart daemon, purge unlinked media, clear sessions).
+* **📇 Contacts Directory & Dossier Inspector (`/contacts.html`):**
+  * **Directory:** Searchable by name, phone, or JID with tier filter chips (`All`, `T1`–`T5`), living memory counters (`🧠 N`), and revocation badges (`🛡️ N`).
+  * **Dossier Inspector:** 1-click tier reclassification, living memory facts manager (add/delete facts), custom persona prompt override, and recent 25-message conversation history preview.
+  * **Tier Board:** 5-column drag-and-drop Kanban board with keyboard shortcuts (`1`–`5`).
+  * **Revoked Inbox:** Dual-pane forensic evidence inspector with dark image viewer, `<audio>` player for voice notes, and `<video>` player.
+* **🧠 Second Brain Vault (`/vault.html`):** Interactive search across notes, quick note creator, and scheduled task queue.
+* **⚙️ System Config & Telemetry (`/config.html`):**
+  * **AI Spend & Token Telemetry:** Real-time today's spend, total token usage, invocations count, and live SQLite audit table.
+  * **Live Persona Tuning Studio:** Test sample incoming messages against your persona prompt in real time.
+  * **Autonomous Switches:** Toggle Autonomous Ghost Mode, Presence Simulation, Stealth Call Rejecter, and Discord Media Forwarding with live visual status badges.
+
+---
+
+## 🚀 Quick Start & Installation
+
+### Local Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/lenoxspider/whatsapp_messiah.git
+   cd whatsapp_messiah
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Configure environment:**
+   ```bash
+   cp .env.example .env
+   ```
+   Edit `.env` with your desired configuration:
+   ```env
+   DASHBOARD_PASSWORD=your_secure_master_password
+   PHONE_NUMBER=233501234567
+   OWNER_JID=233501234567@s.whatsapp.net
+   PAIRING_METHOD=code
+   OPENAI_API_KEY=sk-...
+   OPENAI_MODEL=gpt-4o-mini
+   DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+   AUTO_REJECT_CALLS=1
+   FORWARD_MEDIA_TO_DISCORD=1
+   ```
+
+4. **Build & Run:**
+   ```bash
+   npm run build
+   npm start
+   ```
+
+5. **Link WhatsApp:**
+   * Terminal will display an **8-digit pairing code** (e.g. `ABCD-1234`).
+   * On your phone: WhatsApp -> **Settings** -> **Linked Devices** -> **Link with phone number instead** -> Enter the code.
+   * Open `http://localhost:3000` to access the Operations Console.
+
+---
+
+### ☁️ Production VPS Automated Setup (Ubuntu / Debian)
+
+A zero-touch bash installer is provided for headless Linux servers:
+
+```bash
+chmod +x scripts/setup.sh scripts/update.sh
+./scripts/setup.sh
 ```
 
-### 2. Running the Bot
+**What `scripts/setup.sh` does:**
+1. Prompts for your desired Web Dashboard master password and securely sets `chmod 600 .env`.
+2. Installs Node.js 24 LTS and PM2 process manager if missing.
+3. Compiles TypeScript and starts the daemon under PM2 with automatic system reboot persistence (`pm2 startup`).
 
-* **Development mode**:
-  ```bash
-  npm run dev
-  ```
-* **Production build & run**:
-  ```bash
-  npm run build
-  npm start
-  ```
+**Zero-downtime updates:**
+```bash
+./scripts/update.sh
+```
 
-### 3. Pairing with WhatsApp
-* When `PAIRING_METHOD=code`, the terminal will display an **8-digit code** (e.g. `ABCD-1234`).
-* On your phone:
-  1. Open WhatsApp -> **Settings** -> **Linked Devices**.
-  2. Tap **Link a Device**.
-  3. Tap **Link with phone number instead**.
-  4. Enter the 8-digit code shown in the terminal.
-* Once linked, the session is saved in `./sessions` and survives server reboots.
+---
+
+## 🛠️ WhatsApp In-Chat Commands (Second Brain)
+
+Send these commands to yourself in your WhatsApp self-chat:
+
+| Command | Usage | Description |
+|---|---|---|
+| `!ask` | `!ask <instruction or question>` | Autonomous tool-calling AI agent over your SQLite database. |
+| `!note` | `!note [#tag] <content>` | Captures a note directly into your vault. |
+| `!find` | `!find <query>` | Hybrid semantic + keyword search over your notes vault. |
+| `!remind` | `!remind <time> <task>` | Schedules natural-language time-delayed task notifications. |
+| `!digest` | `!digest` | Summarizes recent captures and active pending reminders. |
+| `!help` | `!help` | Displays available Second Brain commands and capture tips. |
+
+---
+
+## 🔒 Security & Privacy Directives
+
+* **Data Ownership:** All messages, notes, call logs, and embeddings are stored in a local SQLite database (`data/messiah.db`) in WAL mode. No external database or cloud vector service required.
+* **Password Gated:** All Web Operations Console endpoints (`/api/*` and dashboard pages) are protected by session cookies and bcrypt password hashing.
+* **Prompt-Injection Hardening:** Autonomous tool execution is locked strictly to your own authenticated phone number. External contacts can never trigger tools or database operations.
+* **Secret Masking:** Sensitive API keys (`OPENAI_API_KEY`, `DISCORD_WEBHOOK_URL`, `DASHBOARD_PASSWORD`) are write-only and never exposed in cleartext over the API.
+
+---
+
+## 📜 License
+ISC License &middot; Created by [lenoxspider](https://github.com/lenoxspider)
