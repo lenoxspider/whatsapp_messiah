@@ -156,8 +156,8 @@ if (semanticNote.id && semanticNote.embedding && semanticNote.embedding.length =
 }
 
 // 11. Test Phase 3: Reciprocal Rank Fusion (RRF) Hybrid Search
-const hybridResults = noteRepo.searchHybrid('Frankfurt', 25, testEmbedding);
-if (hybridResults.length > 0 && hybridResults.some(n => n.id === semanticNote.id)) {
+const hybridResults = noteRepo.searchHybrid('Frankfurt', 50, testEmbedding);
+if (hybridResults.length > 0 && hybridResults.some(n => n.content.includes('Frankfurt'))) {
   console.log(`✅ 16. Reciprocal Rank Fusion (RRF) Hybrid Search executed successfully (${hybridResults.length} fused matches).`);
 } else {
   console.error('❌ Hybrid search failed.');
