@@ -3,6 +3,8 @@ import makeWASocket, {
   fetchLatestBaileysVersion,
   Browsers
 } from '@whiskeysockets/baileys';
+import fs from 'node:fs';
+import path from 'node:path';
 import pino from 'pino';
 import { initAuthState } from './auth.js';
 import { handlePairing } from './pairing.js';
@@ -82,7 +84,26 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
     try {
       await sock.logout();
     } catch {}
+    try {
+      sock.end(undefined);
+      const sDir = path.resolve(env.sessionsDir);
+      if (fs.existsSync(sDir)) {
+        fs.rmSync(sDir, { recursive: true, force: true });
+      }
+      console.log('[Connection] Sessions directory wiped. Ready for fresh pairing.');
+    } catch (cleanErr) {
+      console.warn('[Session Wipe] Error cleaning sessions dir:', cleanErr);
+    }
     dashboardState.setStatus('disconnected', 'Logged out by user');
+
+    // Automatically boot fresh socket so new pairing code can be requested directly on Web UI
+    setTimeout(async () => {
+      try {
+        await startWhatsAppSocket(callbacks);
+      } catch (bootErr) {
+        console.error('[Connection] Failed to re-boot fresh socket after unlink:', bootErr);
+      }
+    }, 1000);
   };
 
   // Persist credentials whenever updated
