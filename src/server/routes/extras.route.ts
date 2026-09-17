@@ -183,7 +183,7 @@ extrasRouter.post('/update', async (req, res) => {
     setTimeout(async () => {
       try {
         console.log('[Updater] Triggering PM2 reload/restart...');
-        await execAsync('pm2 reload messiah || pm2 restart messiah || pm2 reload whatsapp-messiah || pm2 restart whatsapp-messiah || pm2 restart 0');
+        await execAsync('pm2 reload whatsapp-messiah || pm2 restart whatsapp-messiah || pm2 reload messiah || pm2 restart messiah || pm2 restart 0');
       } catch (pm2Err) {
         console.warn('[Updater] PM2 reload failed, triggering process exit for supervisor:', pm2Err);
         process.exit(0);
@@ -209,7 +209,7 @@ extrasRouter.post('/restart', (req, res) => {
   setTimeout(async () => {
     try {
       console.log('[Daemon] Restart triggered from Dashboard...');
-      await execAsync('pm2 restart messiah || pm2 restart whatsapp-messiah || pm2 restart whatsapp_messiah || pm2 restart 0');
+      await execAsync('pm2 restart whatsapp-messiah || pm2 restart messiah || pm2 restart 0');
     } catch (pm2Err) {
       console.warn('[Daemon] PM2 restart failed, triggering process exit for supervisor:', pm2Err);
       process.exit(0);
@@ -284,7 +284,7 @@ extrasRouter.post('/factory-reset', async (req, res) => {
     setTimeout(async () => {
       try {
         console.log('[Factory Reset] Restarting daemon after reset...');
-        await execAsync('pm2 restart messiah || pm2 restart whatsapp-messiah || pm2 restart whatsapp_messiah || pm2 restart 0');
+        await execAsync('pm2 restart whatsapp-messiah || pm2 restart messiah || pm2 restart 0');
       } catch (pm2Err) {
         console.warn('[Factory Reset] PM2 restart command failed, triggering process.exit(0) for supervisor:', pm2Err);
         process.exit(0);
