@@ -29,6 +29,12 @@ export class PresenceSimulator {
     replyText: string,
     inboundTextLength: number = 20
   ): Promise<void> {
+    // HARD SAFETY CHOKE POINT: Block autonomous replies to WhatsApp Group JIDs (@g.us)
+    if (chatJid.endsWith('@g.us') || chatJid.includes('@g.us')) {
+      console.error(`[Ghost Safety Choke] ⛔ BLOCKED autonomous reply attempt to group JID: ${chatJid}`);
+      throw new Error(`Send-Layer Blocked: Autonomous replies to group JID ${chatJid} are strictly prohibited.`);
+    }
+
     // 1. Initial human reflection latency (phone idle before noticing/reading)
     const readingLatency = this.calculateReadingLatency(inboundTextLength);
     await new Promise((resolve) => setTimeout(resolve, readingLatency));

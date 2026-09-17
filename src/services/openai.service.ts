@@ -222,7 +222,8 @@ class OpenAIService {
   async generateChatReply(
     systemPrompt: string,
     userMessage: string,
-    history: Array<{ role: 'user' | 'assistant'; content: string }> = []
+    history: Array<{ role: 'user' | 'assistant'; content: string }> = [],
+    signal?: AbortSignal
   ): Promise<string> {
     const client = this.getClient();
     const startTime = Date.now();
@@ -233,30 +234,38 @@ class OpenAIService {
       { role: 'user', content: userMessage }
     ];
 
-    const response = await client.chat.completions.create({
-      model: env.openaiModel,
-      messages,
-      temperature: 0.7,
-      max_tokens: 300
-    });
+    try {
+      const response = await client.chat.completions.create({
+        model: env.openaiModel,
+        messages,
+        temperature: 0.7,
+        max_tokens: 300
+      }, { signal });
 
-    const latency = Date.now() - startTime;
-    const promptTokens = response.usage?.prompt_tokens || 0;
-    const completionTokens = response.usage?.completion_tokens || 0;
-    const totalTokens = response.usage?.total_tokens || (promptTokens + completionTokens);
-    const cost = calculateCost(env.openaiModel, promptTokens, completionTokens);
+      const latency = Date.now() - startTime;
+      const promptTokens = response.usage?.prompt_tokens || 0;
+      const completionTokens = response.usage?.completion_tokens || 0;
+      const totalTokens = response.usage?.total_tokens || (promptTokens + completionTokens);
+      const cost = calculateCost(env.openaiModel, promptTokens, completionTokens);
 
-    llmCallRepo.logCall({
-      model: env.openaiModel,
-      purpose: 'ghost_reply',
-      promptTokens,
-      completionTokens,
-      totalTokens,
-      costUsd: cost,
-      latencyMs: latency
-    });
+      llmCallRepo.logCall({
+        model: env.openaiModel,
+        purpose: 'ghost_reply',
+        promptTokens,
+        completionTokens,
+        totalTokens,
+        costUsd: cost,
+        latencyMs: latency
+      });
 
-    return response.choices[0]?.message?.content?.trim() || '';
+      return response.choices[0]?.message?.content?.trim() || '';
+    } catch (err: any) {
+      if (err.name === 'AbortError' || signal?.aborted) {
+        console.warn(`[OpenAIService] Ghost completion request aborted (timeout or newer message arrived).`);
+        return '';
+      }
+      throw err;
+    }
   }
 
   async transcribeAudio(

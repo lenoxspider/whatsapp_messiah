@@ -49,11 +49,11 @@
 - [x] **Append-Only Edit History**: Track message edits as an append-only chain with timestamps to handle out-of-order deliveries.
 
 ### Tier 4: Ghost Handler (Autonomous AI Safety)
-- [ ] **Fail-Closed Engine**: On OpenAI rate limits, timeouts, or errors, log and send NOTHING (never output canned error fallback messages).
-- [ ] **Send-Layer Group Block**: Enforce a strict `CanSend` choke point at the core socket layer preventing any autonomous bot reply to `@g.us` group JIDs.
-- [ ] **Hard API Timeout**: 12-second timeout per AI completion request; abort if newer incoming message arrives.
-- [ ] **Per-Contact Rate Limiting**: Limit autonomous replies to a maximum of N messages per hour per contact.
-- [ ] **Prompt Injection Isolation**: Wrap inbound message content in strict delimiters in system prompt and grant Ghost zero tool-execution rights.
+- [x] **Fail-Closed Engine**: On OpenAI rate limits, timeouts, or errors, log and send NOTHING (never output canned error fallback messages).
+- [x] **Send-Layer Group Block**: Enforce a strict `CanSend` choke point at the core socket layer preventing any autonomous bot reply to `@g.us` group JIDs.
+- [x] **Hard API Timeout**: 12-second timeout per AI completion request; abort if newer incoming message arrives.
+- [x] **Per-Contact Rate Limiting**: Limit autonomous replies to a maximum of N messages per hour per contact.
+- [x] **Prompt Injection Isolation**: Wrap inbound message content in strict delimiters in system prompt and grant Ghost zero tool-execution rights.
 
 ### Tier 5: Second Brain & RAG Retrieval Quality
 - [ ] **Cosine Vector Embeddings**: Integrate `text-embedding-3-small` vector BLOB storage in SQLite alongside FTS5 search for semantic note retrieval.
