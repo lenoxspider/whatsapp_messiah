@@ -52,20 +52,27 @@ export class ContactRepository {
     stmt.run(persona, jid);
   }
 
-  addFact(jid: string, fact: string): void {
-    const contact = this.getContact(jid);
-    if (!contact) return;
+  updateContact(jid: string, updates: { tier?: ContactTier; custom_persona?: string | null; facts_json?: string | null }): void {
+    const sets: string[] = [];
+    const values: any[] = [];
 
-    let facts: string[] = [];
-    try {
-      if (contact.facts_json) facts = JSON.parse(contact.facts_json);
-    } catch {
-      facts = [];
+    if (updates.tier !== undefined) {
+      sets.push('tier = ?');
+      values.push(updates.tier);
+    }
+    if (updates.custom_persona !== undefined) {
+      sets.push('custom_persona = ?');
+      values.push(updates.custom_persona);
+    }
+    if (updates.facts_json !== undefined) {
+      sets.push('facts_json = ?');
+      values.push(updates.facts_json);
     }
 
-    facts.push(fact);
-    const stmt = this.db.prepare(`UPDATE contacts SET facts_json = ? WHERE jid = ?`);
-    stmt.run(JSON.stringify(facts), jid);
+    if (sets.length === 0) return;
+    values.push(jid);
+    const stmt = this.db.prepare(`UPDATE contacts SET ${sets.join(', ')} WHERE jid = ?`);
+    stmt.run(...values);
   }
 }
 
