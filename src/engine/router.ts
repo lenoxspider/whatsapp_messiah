@@ -81,6 +81,16 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
     const fromMe = Boolean(msg.key.fromMe);
     const isGroup = chatJid.endsWith('@g.us');
     const isStatus = chatJid === 'status@broadcast';
+    const isChannel = chatJid.endsWith('@newsletter');
+
+    // 0. WHATSAPP CHANNELS (@newsletter)
+    // WhatsApp Channels are 1-way public broadcast feeds (news, brands, creators).
+    // They are not interactive contacts or direct chats, so we silently ignore them to prevent
+    // channel updates from polluting contacts, triggering Anomaly Radar, or engaging autopilot.
+    if (isChannel) {
+      continue;
+    }
+
     const senderJid = (isGroup || isStatus) ? (msg.key.participant || chatJid) : chatJid;
     const senderPhone = senderJid.split('@')[0].replace(/[^0-9]/g, '');
     const messageType = Object.keys(msg.message)[0] || 'unknown';
