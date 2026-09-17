@@ -6,9 +6,33 @@ import { messiahHandler } from './messiah/handler.js';
 import type { IncomingMessageContext } from '../types/message.js';
 import { env } from '../config/env.js';
 
+export function extractMessageText(message: any): string {
+  if (!message) return '';
+  const m =
+    message.ephemeralMessage?.message ||
+    message.viewOnceMessage?.message ||
+    message.viewOnceMessageV2?.message ||
+    message.documentWithCaptionMessage?.message ||
+    message;
+
+  return (
+    m.conversation ||
+    m.extendedTextMessage?.text ||
+    m.imageMessage?.caption ||
+    m.videoMessage?.caption ||
+    m.documentMessage?.caption ||
+    ''
+  ).trim();
+}
+
 export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise<void> {
   const { messages, type } = upsert;
   if (!messages || messages.length === 0) return;
+
+  // Auto-detect user identifiers from the live socket
+  const myPhone = sock.user?.id ? sock.user.id.split(':')[0].replace(/[^0-9]/g, '') : env.phoneNumber;
+  const myJid = myPhone ? `${myPhone}@s.whatsapp.net` : env.ownerJid;
+  const myLid = (sock.user as any)?.lid ? (sock.user as any).lid.split(':')[0] + '@lid' : '';
 
   for (const msg of messages) {
     if (!msg.message) continue;
@@ -23,20 +47,28 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
       continue;
     }
 
-    // Extract message body text
-    const text =
-      msg.message?.conversation ||
-      msg.message?.extendedTextMessage?.text ||
-      msg.message?.imageMessage?.caption ||
-      msg.message?.videoMessage?.caption ||
-      '';
-
+    const text = extractMessageText(msg.message);
     const chatJid = msg.key.remoteJid || '';
     const fromMe = Boolean(msg.key.fromMe);
     const isGroup = chatJid.endsWith('@g.us');
     const senderJid = isGroup ? (msg.key.participant || '') : chatJid;
     const senderPhone = senderJid.split('@')[0];
     const messageType = Object.keys(msg.message)[0] || 'unknown';
+
+    // Ignore bot's own output to prevent infinite loops
+    const isBotEcho = fromMe && (
+      text.startsWith('⚡ *MESSIAH') ||
+      text.startsWith('📝 *Saved Note') ||
+      text.startsWith('⏰ *REMINDER') ||
+      text.startsWith('🔍 *Search Results') ||
+      text.startsWith('❓ Unknown command') ||
+      text.startsWith('🧠 *MESSIAH') ||
+      text.startsWith('📥 Captured') ||
+      text.startsWith('⚠️ Usage:')
+    );
+    if (isBotEcho) continue;
+
+    console.log(`[Message Inbound] chat=${chatJid} fromMe=${fromMe} text="${text}"`);
 
     // 1. SILENT ARCHIVE: Persist message immediately to SQLite
     messageRepo.saveMessage({
@@ -63,17 +95,25 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
       raw: msg
     };
 
-    // 2. ROUTE TO SECOND BRAIN:
-    // If sent from the user's account to themselves ("Message Yourself"), or targeting the owner's chat
-    const isSelfChat = fromMe && (chatJid === env.ownerJid || chatJid.includes(env.phoneNumber));
-    if (isSelfChat || (fromMe && chatJid.endsWith('@s.whatsapp.net') && !isGroup && text.startsWith('!'))) {
+    // 2. SELF-CHAT / SECOND BRAIN ROUTING:
+    // Matches if message was sent from your account to yourself OR if you type any '!' command in any DM
+    const isSelfChat = fromMe && (
+      (myJid && chatJid === myJid) ||
+      (myPhone && chatJid.startsWith(myPhone)) ||
+      (myLid && chatJid === myLid)
+    );
+
+    const isCommand = fromMe && text.startsWith('!');
+
+    if ((isSelfChat || isCommand) && text) {
+      console.log(`[Second Brain] Executing command/capture from owner: "${text}"`);
       await secondBrainDispatcher.dispatch(sock, ctx);
       continue;
     }
 
-    // 3. ROUTE TO MESSIAH GHOST HANDLER:
-    // Inbound messages from other contacts (skip group chats to avoid group spam)
-    if (!fromMe && !isGroup) {
+    // 3. MESSIAH GHOST HANDLER ROUTING:
+    // Inbound messages from external contacts (non-group)
+    if (!fromMe && !isGroup && text) {
       await messiahHandler.handleContactMessage(sock, ctx);
     }
   }

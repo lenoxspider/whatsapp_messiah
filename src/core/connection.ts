@@ -7,6 +7,7 @@ import { initAuthState } from './auth.js';
 import { handlePairing } from './pairing.js';
 import { evaluateDisconnect } from './reconnect.js';
 import { dashboardState } from '../server/state.js';
+import { env } from '../config/env.js';
 
 export interface ConnectionCallbacks {
   onMessageUpsert: (sock: WASocket, upsert: any) => Promise<void>;
@@ -81,22 +82,29 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
   // Connection state events
   sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect } = update;
+    const isLinked = Boolean(state.creds.me?.id || state.creds.registered || sock.user?.id);
 
     // Handle QR code or 8-digit pairing code
-    await handlePairing(sock, update, !!state.creds.registered);
+    await handlePairing(sock, update, isLinked);
 
     if (connection === 'close') {
-      const decision = evaluateDisconnect(lastDisconnect?.error, !!state.creds.registered);
+      const decision = evaluateDisconnect(lastDisconnect?.error, isLinked);
       dashboardState.setStatus('disconnected', decision.reason);
 
       if (decision.shouldReconnect) {
         setTimeout(() => startWhatsAppSocket(callbacks), 4000);
       }
     } else if (connection === 'open') {
-      console.log('\n✅ [Connection] WhatsApp Messiah is connected and listening.');
-      const phone = sock.user?.id?.split(':')[0] || null;
+      const phone = sock.user?.id?.split(':')[0]?.replace(/[^0-9]/g, '') || null;
+      if (phone) {
+        env.phoneNumber = phone;
+        env.ownerJid = `${phone}@s.whatsapp.net`;
+        dashboardState.setPairedPhone(phone);
+        console.log(`\n✅ [Connection] Connected as Owner: +${phone} (${env.ownerJid})`);
+      } else {
+        console.log('\n✅ [Connection] WhatsApp Messiah is connected and listening.');
+      }
       dashboardState.setStatus('connected');
-      dashboardState.setPairedPhone(phone);
       callbacks.onReady(sock);
     }
   });

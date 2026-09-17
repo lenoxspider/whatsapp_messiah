@@ -14,20 +14,9 @@ export class AutoCapture {
 
     const saved = noteRepo.saveNote(text, tag, url);
 
-    // Provide a subtle feedback reaction to the message
-    try {
-      await sock.sendMessage(message.chatJid, {
-        react: {
-          text: '📥',
-          key: message.raw.key
-        }
-      });
-    } catch {
-      // Fallback: send brief confirmation if reaction is unsupported
-      await sock.sendMessage(message.chatJid, {
-        text: `📥 Captured to \`#${tag}\` [#${saved.id}]`
-      });
-    }
+    await sock.sendMessage(message.chatJid, {
+      text: `📥 Captured to \`#${tag}\` [#${saved.id}]`
+    });
   }
 }
 
