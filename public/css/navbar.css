@@ -1,155 +1,341 @@
-.app-header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  background: var(--bg-glass);
-  border-bottom: 1px solid var(--border-subtle);
-  padding: 0.85rem 2rem;
+/* ==============================================================================
+   Operations Console Shell Layout (Icon Rail + Persistent Status Bar)
+   ============================================================================== */
+
+.app-shell {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  min-height: 100vh;
+  background-color: var(--bg-canvas);
 }
 
-.brand-container {
+/* ------------------------------------------------------------------------------
+   Vertical Icon Rail (Left)
+   ------------------------------------------------------------------------------ */
+.icon-rail {
+  width: var(--rail-width-collapsed);
+  background-color: var(--bg-surface);
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+  transition: width var(--transition-normal);
+  overflow-x: hidden;
+  user-select: none;
+}
+
+.icon-rail.pinned,
+.icon-rail:hover {
+  width: var(--rail-width-expanded);
+}
+
+.rail-top,
+.rail-nav,
+.rail-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.rail-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  text-decoration: none;
+  color: var(--text-main);
+  margin-bottom: 1rem;
+}
+
+.rail-brand-logo {
+  font-size: 1.5rem;
+  min-width: 32px;
+  text-align: center;
+}
+
+.rail-brand-text {
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.icon-rail.pinned .rail-brand-text,
+.icon-rail:hover .rail-brand-text {
+  opacity: 1;
+}
+
+.rail-nav {
+  gap: 0.35rem;
+  flex: 1;
+}
+
+.rail-item {
   display: flex;
   align-items: center;
   gap: 0.85rem;
+  width: calc(100% - 1rem);
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-md);
   text-decoration: none;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 500;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  white-space: nowrap;
 }
 
-.brand-logo {
-  width: 38px;
-  height: 38px;
-  border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #00f0ff, #9d4edd);
+.rail-item:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.rail-item.active {
+  background-color: var(--bg-elevated);
+  color: var(--accent-green);
+  border: 1px solid var(--border-subtle);
+}
+
+.rail-icon {
+  font-size: 1.15rem;
+  min-width: 28px;
+  text-align: center;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.25rem;
-  box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
 }
 
-.brand-text h1 {
-  font-size: 1.15rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  background: linear-gradient(90deg, #ffffff, #8b9bb4);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+.rail-label {
+  opacity: 0;
+  transition: opacity var(--transition-fast);
 }
 
-.brand-text span {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--accent-cyan);
-  font-weight: 600;
+.icon-rail.pinned .rail-label,
+.icon-rail:hover .rail-label {
+  opacity: 1;
 }
 
-.nav-links {
-  display: flex;
-  align-items: center;
+.rail-bottom {
   gap: 0.5rem;
-  list-style: none;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-subtle);
 }
 
-.nav-link {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.55rem 1rem;
-  border-radius: var(--radius-md);
+.rail-action-btn {
+  background: transparent;
+  border: none;
   color: var(--text-muted);
-  text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: var(--transition-fast);
-  border: 1px solid transparent;
+  width: calc(100% - 1rem);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  white-space: nowrap;
 }
 
-.nav-link:hover {
+.rail-action-btn:hover {
+  background-color: var(--bg-hover);
   color: var(--text-main);
-  background: rgba(255, 255, 255, 0.04);
 }
 
-.nav-link.active {
-  color: var(--accent-cyan);
-  background: rgba(0, 240, 255, 0.08);
-  border-color: rgba(0, 240, 255, 0.25);
-  box-shadow: 0 0 12px rgba(0, 240, 255, 0.1);
+/* Heartbeat Indicator */
+.rail-heartbeat {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: calc(100% - 1rem);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  white-space: nowrap;
 }
 
-.header-status {
+.heartbeat-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--text-dim);
+  min-width: 8px;
+}
+
+.heartbeat-dot.live {
+  background-color: var(--accent-green);
+  box-shadow: 0 0 8px rgba(29, 158, 117, 0.6);
+  animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.92); }
+}
+
+/* ------------------------------------------------------------------------------
+   Persistent Status Bar (Top)
+   ------------------------------------------------------------------------------ */
+.main-stage {
+  flex: 1;
+  margin-left: var(--rail-width-collapsed);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  transition: margin-left var(--transition-normal);
+}
+
+.status-bar {
+  height: var(--status-bar-height);
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.25rem;
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.status-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text-main);
+}
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+}
+
+.status-dot-sm {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-dim);
+}
+
+.status-dot-sm.connected {
+  background: var(--accent-green);
+  box-shadow: 0 0 6px var(--accent-green);
+  animation: pulse-glow 2s infinite;
+}
+
+.status-dot-sm.connecting {
+  background: var(--accent-amber);
+}
+
+.status-dot-sm.disconnected {
+  background: var(--accent-coral);
+}
+
+.status-right {
   display: flex;
   align-items: center;
   gap: 0.75rem;
 }
 
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.35rem 0.85rem;
-  border-radius: var(--radius-full);
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  background: rgba(255, 255, 255, 0.04);
+.cmd-palette-pill {
+  background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   color: var(--text-muted);
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
 }
 
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--text-dim);
+.cmd-palette-pill:hover {
+  border-color: var(--border-focus);
+  color: var(--text-main);
 }
 
-.status-badge.connected {
-  border-color: var(--border-active);
-  background: rgba(0, 255, 136, 0.08);
-  color: var(--accent-emerald);
-}
-.status-badge.connected .status-dot {
-  background: var(--accent-emerald);
-  box-shadow: 0 0 8px var(--accent-emerald);
+.kbd-badge {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-focus);
+  border-radius: 3px;
+  padding: 0.05rem 0.3rem;
+  font-size: 0.7rem;
 }
 
-.status-badge.connecting {
-  border-color: rgba(255, 170, 0, 0.4);
-  background: rgba(255, 170, 0, 0.08);
-  color: var(--accent-amber);
-}
-.status-badge.connecting .status-dot {
-  background: var(--accent-amber);
-  animation: pulse 1.5s infinite;
-}
-
-.status-badge.disconnected {
-  border-color: rgba(255, 51, 102, 0.3);
-  background: rgba(255, 51, 102, 0.08);
-  color: var(--accent-rose);
-}
-.status-badge.disconnected .status-dot {
-  background: var(--accent-rose);
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.85); }
-}
-
-@media (max-width: 860px) {
-  .app-header {
-    flex-direction: column;
-    gap: 0.75rem;
-    padding: 1rem;
+/* ------------------------------------------------------------------------------
+   Mobile Bottom Tab Bar (< 768px)
+   ------------------------------------------------------------------------------ */
+@media (max-width: 768px) {
+  .icon-rail {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100% !important;
+    height: 56px;
+    border-right: none;
+    border-top: 1px solid var(--border-subtle);
+    flex-direction: row;
+    padding: 0 0.5rem;
   }
-  .nav-links {
-    flex-wrap: wrap;
-    justify-content: center;
+
+  .rail-top,
+  .rail-bottom {
+    display: none;
+  }
+
+  .rail-nav {
+    flex-direction: row;
+    justify-content: space-around;
+    gap: 0;
+    width: 100%;
+  }
+
+  .rail-item {
+    width: auto;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.7rem;
+  }
+
+  .rail-icon {
+    font-size: 1.1rem;
+    min-width: auto;
+  }
+
+  .rail-label {
+    opacity: 1 !important;
+    display: block;
+  }
+
+  .main-stage {
+    margin-left: 0 !important;
+    padding-bottom: 64px;
+  }
+
+  .status-bar {
+    padding: 0 0.75rem;
+    font-size: 0.75rem;
   }
 }

@@ -132,3 +132,32 @@ configRouter.post('/test-discord', async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+configRouter.post('/preview-reply', async (req, res) => {
+  const { systemPrompt, messageText } = req.body;
+  if (!systemPrompt || !messageText) {
+    return res.status(400).json({ error: 'systemPrompt and messageText are required.' });
+  }
+
+  if (!env.openaiApiKey) {
+    return res.status(400).json({ error: 'OpenAI API key is not configured.' });
+  }
+
+  try {
+    const client = new OpenAI({ apiKey: env.openaiApiKey });
+    const response = await client.chat.completions.create({
+      model: env.openaiModel || 'gpt-4o',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: messageText }
+      ],
+      temperature: 0.7,
+      max_tokens: 300
+    });
+
+    const reply = response.choices[0]?.message?.content?.trim() || '';
+    res.json({ success: true, reply });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});

@@ -11,80 +11,94 @@
 </head>
 <body>
 
-  <!-- Shared App Header -->
-  <header class="app-header">
-    <a href="/" class="brand-container">
-      <div class="brand-logo">🕊️</div>
-      <div class="brand-text">
-        <h1>MESSIAH</h1>
-        <span>WhatsApp Control Plane</span>
-      </div>
-    </a>
-
-    <nav>
-      <ul class="nav-links">
-        <li><a href="/" class="nav-link">🔗 Connection</a></li>
-        <li><a href="/config.html" class="nav-link">⚙️ Config</a></li>
-        <li><a href="/vault.html" class="nav-link active">🧠 Second Brain</a></li>
-        <li><a href="/contacts.html" class="nav-link">🛡️ Ghost Sentinel</a></li>
-      </ul>
-    </nav>
-
-    <div class="header-status">
-      <div id="global-status-badge" class="status-badge disconnected">
-        <span class="status-dot"></span>
-        <span id="global-status-text">Disconnected</span>
-      </div>
-    </div>
-  </header>
-
-  <main class="main-content">
-    <div class="page-title-block">
-      <h2>Second Brain Vault &amp; FTS5 Explorer</h2>
-      <p>Search all thoughts, articles, links, and auto-captured WhatsApp messages with full-text search.</p>
-    </div>
-
-    <!-- Top Bar: Search & Quick Note Creation -->
-    <div class="card" style="margin-bottom: 2rem;">
-      <div class="vault-header-bar">
-        <div class="search-input-wrapper">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="vault-search-input" class="form-input" placeholder="Full-text search notes, tags (#work), or links..." />
-        </div>
-      </div>
-
-      <!-- Quick Add Note Form -->
-      <form id="new-note-form" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-        <input type="text" id="new-note-content" class="form-input" placeholder="Type a quick note or paste a URL..." style="flex: 3; min-width: 260px;" required />
-        <input type="text" id="new-note-tag" class="form-input" placeholder="Tag (e.g. work, idea, link)" style="flex: 1; min-width: 120px;" />
-        <button type="submit" class="btn btn-primary" style="flex-shrink: 0;">+ Save Note</button>
-      </form>
-    </div>
-
-    <!-- Notes & Reminders Grid -->
-    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
-      <!-- Notes Grid -->
+  <main class="main-content" style="padding: 1.5rem; max-width: 1400px; margin: 0 auto; width: 100%;">
+    
+    <!-- Top Operations Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
       <div>
-        <div class="card-title" style="margin-bottom: 1rem;">
-          <span>📝</span> Captured Notes
+        <h1 style="font-size: 1.35rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+          <span>🧠</span> SECOND BRAIN VAULT
+        </h1>
+        <p style="color: var(--text-muted); font-size: 0.82rem;">SQLite FTS5 full-text search, persistent memories, and cron timeline.</p>
+      </div>
+
+      <!-- View Selector -->
+      <div style="display: flex; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 2px;">
+        <button id="tab-btn-notes" class="btn" style="background: var(--bg-elevated); color: var(--accent-green); border: none; padding: 0.35rem 0.85rem; font-size: 0.78rem; font-weight: 600; cursor: pointer; border-radius: var(--radius-sm);">
+          Notes Archive (<span id="tab-notes-count" class="tabular-nums">0</span>)
+        </button>
+        <button id="tab-btn-reminders" class="btn" style="background: transparent; color: var(--text-muted); border: none; padding: 0.35rem 0.85rem; font-size: 0.78rem; font-weight: 600; cursor: pointer; border-radius: var(--radius-sm);">
+          Timeline Reminders (<span id="tab-reminders-count" class="tabular-nums">0</span>)
+        </button>
+      </div>
+    </div>
+
+    <!-- Pinned Quick-Add Persistent Composer -->
+    <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.6rem 0.85rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.75rem;">
+      <span style="color: var(--accent-green); font-weight: 700; font-size: 0.9rem;">+</span>
+      <input 
+        type="text" 
+        id="quick-add-input" 
+        placeholder="Quick capture note or URL... Type #tag then content, press Enter to save" 
+        style="flex: 1; background: transparent; border: none; outline: none; color: var(--text-main); font-size: 0.85rem; font-family: var(--font-sans);"
+      />
+      <span class="kbd-badge">ENTER</span>
+    </div>
+
+    <!-- Search-First Input Box -->
+    <div style="display: flex; gap: 0.75rem; align-items: center; margin-bottom: 0.75rem;">
+      <div style="flex: 1; position: relative; display: flex; align-items: center;">
+        <span style="position: absolute; left: 0.85rem; color: var(--text-dim); font-size: 0.85rem;">🔍</span>
+        <input 
+          type="text" 
+          id="vault-search-input" 
+          class="form-input" 
+          placeholder="Search notes with FTS5 token matching (e.g. VPS, docker, meeting)..." 
+          autofocus 
+          style="width: 100%; padding-left: 2.25rem; background: var(--bg-surface); border: 1px solid var(--border-subtle); color: var(--text-main); border-radius: var(--radius-sm); font-size: 0.85rem; height: 36px;"
+        />
+        <button id="btn-clear-search" style="display: none; position: absolute; right: 0.75rem; background: transparent; border: none; color: var(--text-dim); cursor: pointer;">✕</button>
+      </div>
+    </div>
+
+    <!-- Tag Filter Chips Bar -->
+    <div class="tag-chips-bar" id="tag-chips-container">
+      <span style="font-size: 0.72rem; color: var(--text-dim); font-family: var(--font-mono); margin-right: 0.25rem;">TAGS:</span>
+      <div class="tag-chip active" data-tag="ALL">All Notes</div>
+      <!-- Dynamically populated chips: #project (14), #link (63) -->
+    </div>
+
+    <!-- Two-Pane Layout: List Left, Inspector Right -->
+    <div class="two-pane-container">
+      
+      <!-- Left Pane: Notes / Reminders List -->
+      <div class="pane-surface">
+        <div class="pane-header">
+          <span class="pane-title" id="list-pane-title">Vault Items</span>
+          <span style="font-size: 0.72rem; color: var(--text-dim); font-family: var(--font-mono);">[j/k] Navigate · [Enter] Inspect</span>
         </div>
-        <div id="notes-grid" class="notes-grid">
-          <div style="color: var(--text-dim);">Loading vault notes...</div>
+        <div class="pane-scrollable" id="vault-list-container">
+          <div style="color: var(--text-dim); font-size: 0.85rem; padding: 2rem; text-align: center;">Loading archive...</div>
         </div>
       </div>
 
-      <!-- Reminders Column -->
-      <div>
-        <div class="card-title" style="margin-bottom: 1rem;">
-          <span>⏰</span> Scheduled Reminders
+      <!-- Right Pane: Item Inspector / Detail Panel -->
+      <div class="pane-surface">
+        <div class="pane-header">
+          <span class="pane-title">Memory Inspector</span>
+          <div style="display: flex; gap: 0.5rem;" id="inspector-actions">
+            <!-- Dynamic actions: Copy, Delete, Complete -->
+          </div>
         </div>
-        <div class="card" style="padding: 1.25rem;">
-          <div id="reminders-list" class="reminders-list">
-            <div style="color: var(--text-dim);">Loading scheduled reminders...</div>
+        <div class="pane-scrollable" id="inspector-detail-container" style="padding: 1.25rem;">
+          <div style="color: var(--text-dim); font-size: 0.82rem; padding: 3rem 1rem; text-align: center;">
+            Select a note or reminder from the list to inspect full text, tags, and metadata.
           </div>
         </div>
       </div>
+
     </div>
+
   </main>
 
   <script type="module" src="/js/nav.js"></script>

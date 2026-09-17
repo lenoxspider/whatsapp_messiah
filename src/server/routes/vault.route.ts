@@ -7,14 +7,38 @@ export const vaultRouter = Router();
 
 vaultRouter.get('/notes', (req, res) => {
   const query = req.query.q as string | undefined;
+  const tag = req.query.tag as string | undefined;
 
   if (query && query.trim()) {
-    const results = noteRepo.searchNotes(query.trim(), 50);
+    const results = noteRepo.searchNotesAdvanced(query.trim(), 50);
+    return res.json({ notes: results });
+  }
+
+  if (tag && tag.trim()) {
+    const db = getDatabase();
+    const cleanTag = tag.trim().replace(/^#/, '');
+    const results = db.prepare('SELECT * FROM notes WHERE tag = ? OR tag = ? ORDER BY created_at DESC LIMIT 50').all(cleanTag, `#${cleanTag}`);
     return res.json({ notes: results });
   }
 
   const recent = noteRepo.getRecentNotes(50);
   res.json({ notes: recent });
+});
+
+vaultRouter.get('/tags', (req, res) => {
+  const db = getDatabase();
+  try {
+    const rows = db.prepare(`
+      SELECT tag, COUNT(*) as count 
+      FROM notes 
+      WHERE tag IS NOT NULL AND tag != ''
+      GROUP BY tag 
+      ORDER BY count DESC
+    `).all();
+    res.json({ tags: rows });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 vaultRouter.post('/notes', (req, res) => {

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Messiah | System Configuration</title>
+  <title>Messiah | Config &amp; Persona Studio</title>
   <link rel="stylesheet" href="/css/theme.css">
   <link rel="stylesheet" href="/css/navbar.css">
   <link rel="stylesheet" href="/css/components.css">
@@ -11,139 +11,194 @@
 </head>
 <body>
 
-  <!-- Shared App Header -->
-  <header class="app-header">
-    <a href="/" class="brand-container">
-      <div class="brand-logo">🕊️</div>
-      <div class="brand-text">
-        <h1>MESSIAH</h1>
-        <span>WhatsApp Control Plane</span>
+  <main class="main-content" style="padding: 1.5rem; max-width: 1400px; margin: 0 auto; width: 100%;">
+    
+    <!-- Top Operations Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <div>
+        <h1 style="font-size: 1.35rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+          <span>⚙️</span> CONFIG &amp; PERSONA STUDIO
+        </h1>
+        <p style="color: var(--text-muted); font-size: 0.82rem;">Write-only credential vault, real-time persona simulation tuner, and webhook telemetry.</p>
       </div>
-    </a>
 
-    <nav>
-      <ul class="nav-links">
-        <li><a href="/" class="nav-link">🔗 Connection</a></li>
-        <li><a href="/config.html" class="nav-link active">⚙️ Config</a></li>
-        <li><a href="/vault.html" class="nav-link">🧠 Second Brain</a></li>
-        <li><a href="/contacts.html" class="nav-link">🛡️ Ghost Sentinel</a></li>
-      </ul>
-    </nav>
-
-    <div class="header-status">
-      <div id="global-status-badge" class="status-badge disconnected">
-        <span class="status-dot"></span>
-        <span id="global-status-text">Disconnected</span>
-      </div>
-    </div>
-  </header>
-
-  <main class="main-content">
-    <div class="page-title-block">
-      <h2>System Configuration & AI Credentials</h2>
-      <p>Configure OpenAI models, Discord emergency webhooks, and Messiah ghost-handler behavior.</p>
+      <button id="btn-save-all-top" class="btn" style="background: var(--accent-green); color: #fff; font-weight: 600; border: none; padding: 0.5rem 1.25rem; border-radius: var(--radius-sm); font-size: 0.82rem; cursor: pointer;">
+        💾 Save All Config
+      </button>
     </div>
 
-    <form id="config-form">
-      <div class="config-layout">
-        <!-- Card 1: AI & External Webhooks -->
-        <div class="card">
-          <div class="card-title">
-            <span>🧠</span> OpenAI &amp; Integrations
+    <!-- Main Grid: Credentials Left, Persona Studio Right -->
+    <div style="display: grid; grid-template-columns: 1fr 1.35fr; gap: 1.25rem;">
+      
+      <!-- Left Column: Write-Only Credentials & Hardening -->
+      <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+        
+        <!-- OpenAI Credentials -->
+        <div class="pane-surface">
+          <div class="pane-header">
+            <span class="pane-title">🔑 OpenAI Credentials (Write-Only)</span>
+            <span id="badge-openai-status" class="delta-badge">UNCONFIGURED</span>
           </div>
-          <div class="card-subtitle">
-            Powers the Second Brain <code>!ask</code> command and Messiah persona generation.
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="openai-key-input">OpenAI API Key</label>
-            <div class="input-with-action">
-              <input type="password" id="openai-key-input" class="form-input" placeholder="sk-proj-..." />
-              <button type="button" id="btn-test-openai" class="btn btn-secondary">Test API Key</button>
+          <div style="padding: 1rem; display: flex; flex-direction: column; gap: 0.85rem;">
+            <div>
+              <label class="form-label" style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">API Key Status</label>
+              <div style="display: flex; gap: 0.5rem;">
+                <input type="text" id="openai-key-display" class="font-mono" style="flex: 1; background: var(--bg-elevated); border: 1px solid var(--border-subtle); color: var(--text-muted); padding: 0.5rem; border-radius: var(--radius-sm); font-size: 0.8rem;" readonly placeholder="Not configured" />
+                <button type="button" id="btn-replace-openai" class="btn" style="background: var(--bg-hover); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.78rem; cursor: pointer;">
+                  Replace
+                </button>
+              </div>
+              <div id="openai-key-replace-box" style="display: none; margin-top: 0.5rem;">
+                <input type="password" id="openai-key-input" placeholder="Paste new sk-..." style="width: 100%; background: var(--bg-elevated); border: 1px solid var(--accent-green); color: var(--text-main); padding: 0.5rem; border-radius: var(--radius-sm); font-size: 0.8rem; font-family: var(--font-mono);" />
+              </div>
             </div>
-            <div class="input-hint">Leave blank to keep existing key. Stored encrypted locally in .env</div>
-          </div>
 
-          <div class="form-group">
-            <label class="form-label" for="openai-model-select">OpenAI Model</label>
-            <select id="openai-model-select" class="form-select">
-              <option value="gpt-4o">gpt-4o (Recommended: Fast, highly capable)</option>
-              <option value="gpt-4o-mini">gpt-4o-mini (Lightweight, low latency)</option>
-              <option value="o3-mini">o3-mini (Reasoning focus)</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="discord-webhook-input">Discord Escalation Webhook URL</label>
-            <div class="input-with-action">
-              <input type="text" id="discord-webhook-input" class="form-input" placeholder="https://discord.com/api/webhooks/..." />
-              <button type="button" id="btn-test-discord" class="btn btn-secondary">Test Webhook</button>
+            <div style="display: flex; gap: 0.75rem;">
+              <div style="flex: 1;">
+                <label class="form-label" style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">Model Selection</label>
+                <select id="openai-model-select" style="width: 100%; background: var(--bg-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 0.5rem; border-radius: var(--radius-sm); font-size: 0.8rem; font-family: var(--font-mono);">
+                  <option value="gpt-4o">gpt-4o (Smartest &amp; Most Human)</option>
+                  <option value="gpt-4o-mini" selected>gpt-4o-mini (Fast &amp; Cost-Efficient)</option>
+                  <option value="gpt-4-turbo">gpt-4-turbo</option>
+                  <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+                </select>
+              </div>
+              <div style="display: flex; align-items: flex-end;">
+                <button type="button" id="btn-test-openai" class="btn" style="background: var(--bg-hover); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 0.5rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.78rem; cursor: pointer; white-space: nowrap;">
+                  ⚡ Verify Key
+                </button>
+              </div>
             </div>
-            <div class="input-hint">Emergency alerts and anti-revoke messages are dispatched here.</div>
+            <div id="openai-test-result" style="font-size: 0.76rem; font-family: var(--font-mono); display: none;"></div>
           </div>
         </div>
 
-        <!-- Card 2: Persona & Ghost Behavior -->
-        <div class="card">
-          <div class="card-title">
-            <span>🛡️</span> Ghost-Handler &amp; Identity
+        <!-- Discord Escalation Webhook -->
+        <div class="pane-surface">
+          <div class="pane-header">
+            <span class="pane-title">📣 Discord Webhook Telemetry</span>
+            <span id="badge-discord-status" class="delta-badge">UNCONFIGURED</span>
           </div>
-          <div class="card-subtitle">
-            Presence simulation timings and owner identifiers.
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="phone-number-input">Owner Phone Number</label>
-            <input type="text" id="phone-number-input" class="form-input" placeholder="e.g. 15551234567" />
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="owner-jid-input">Owner JID</label>
-            <input type="text" id="owner-jid-input" class="form-input" placeholder="e.g. 15551234567@s.whatsapp.net" />
-            <div class="input-hint">Used to identify Second Brain commands sent to yourself.</div>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-            <div class="form-group">
-              <label class="form-label" for="typing-speed-input">Typing Speed (ms/char)</label>
-              <input type="number" id="typing-speed-input" class="form-input" value="45" min="10" max="200" />
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="max-delay-input">Max Typing Delay (ms)</label>
-              <input type="number" id="max-delay-input" class="form-input" value="8000" min="1000" max="30000" />
-            </div>
-          </div>
-
-          <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-subtle);">
+          <div style="padding: 1rem; display: flex; flex-direction: column; gap: 0.85rem;">
             <div>
-              <div style="font-weight: 600; color: #fff;">Enable Ghost Presence</div>
-              <div style="font-size: 0.8rem; color: var(--text-muted);">Simulate typing delay & selective deafness (grey ticks)</div>
+              <label class="form-label" style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">Webhook URL Status</label>
+              <div style="display: flex; gap: 0.5rem;">
+                <input type="text" id="discord-webhook-display" class="font-mono" style="flex: 1; background: var(--bg-elevated); border: 1px solid var(--border-subtle); color: var(--text-muted); padding: 0.5rem; border-radius: var(--radius-sm); font-size: 0.8rem;" readonly placeholder="Not configured" />
+                <button type="button" id="btn-replace-discord" class="btn" style="background: var(--bg-hover); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.78rem; cursor: pointer;">
+                  Replace
+                </button>
+              </div>
+              <div id="discord-webhook-replace-box" style="display: none; margin-top: 0.5rem;">
+                <input type="text" id="discord-webhook-input" placeholder="Paste https://discord.com/api/webhooks/..." style="width: 100%; background: var(--bg-elevated); border: 1px solid var(--accent-green); color: var(--text-main); padding: 0.5rem; border-radius: var(--radius-sm); font-size: 0.8rem; font-family: var(--font-mono);" />
+              </div>
             </div>
-            <label style="position: relative; display: inline-block; width: 48px; height: 26px;">
-              <input type="checkbox" id="ghost-handler-toggle" style="opacity: 0; width: 0; height: 0;" checked />
-              <span style="position: absolute; cursor: pointer; inset: 0; background-color: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: 34px; transition: .3s;"></span>
-            </label>
-          </div>
 
-          <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-subtle);">
             <div>
-              <div style="font-weight: 600; color: #34d399;">Autonomous Ghost Mode (Talks as You)</div>
-              <div style="font-size: 0.8rem; color: var(--text-muted);">Active conversational reply engine with contact memory & quiet hours</div>
+              <button type="button" id="btn-test-discord" class="btn" style="width: 100%; background: var(--bg-hover); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 0.5rem; border-radius: var(--radius-sm); font-size: 0.78rem; cursor: pointer;">
+                🚀 Dispatch Test Notification to Discord
+              </button>
+              <div id="discord-test-result" style="font-size: 0.76rem; font-family: var(--font-mono); margin-top: 0.4rem; display: none;"></div>
             </div>
-            <label style="position: relative; display: inline-block; width: 48px; height: 26px;">
-              <input type="checkbox" id="autonomous-ghost-toggle" style="opacity: 0; width: 0; height: 0;" />
-              <span style="position: absolute; cursor: pointer; inset: 0; background-color: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: 34px; transition: .3s;"></span>
-            </label>
-          </div>
-
-          <div style="margin-top: 1.5rem;">
-            <button type="submit" class="btn btn-primary" style="width: 100%;">
-              💾 Save All Changes
-            </button>
           </div>
         </div>
+
+        <!-- Ghost-Handler & Anti-Revoke Toggles -->
+        <div class="pane-surface">
+          <div class="pane-header">
+            <span class="pane-title">🛡️ Autonomous Switches</span>
+          </div>
+          <div style="padding: 1rem; display: flex; flex-direction: column; gap: 1rem;">
+            <!-- Autonomous Ghost -->
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-weight: 600; font-size: 0.84rem; color: var(--accent-green);">Autonomous Ghost Mode (Talks as You)</div>
+                <div style="font-size: 0.76rem; color: var(--text-muted);">Active conversational reply engine with contact memory &amp; sleep cycle</div>
+              </div>
+              <label style="position: relative; display: inline-block; width: 44px; height: 24px; cursor: pointer;">
+                <input type="checkbox" id="autonomous-ghost-toggle" style="opacity: 0; width: 0; height: 0;" />
+                <span style="position: absolute; inset: 0; background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 24px; transition: 0.2s;"></span>
+              </label>
+            </div>
+
+            <!-- Ghost Presence -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 0.85rem;">
+              <div>
+                <div style="font-weight: 600; font-size: 0.84rem; color: var(--text-main);">Ghost Presence Simulation</div>
+                <div style="font-size: 0.76rem; color: var(--text-muted);">Typing speed emulation &amp; selective deafness grey-ticks</div>
+              </div>
+              <label style="position: relative; display: inline-block; width: 44px; height: 24px; cursor: pointer;">
+                <input type="checkbox" id="ghost-handler-toggle" style="opacity: 0; width: 0; height: 0;" checked />
+                <span style="position: absolute; inset: 0; background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 24px; transition: 0.2s;"></span>
+              </label>
+            </div>
+
+            <!-- Anti-Revoke Retention Readout -->
+            <div style="border-top: 1px solid var(--border-subtle); padding-top: 0.85rem; font-size: 0.78rem; color: var(--text-dim); display: flex; justify-content: space-between;">
+              <span>Preserved Retractions:</span>
+              <span id="anti-revoke-stat" class="tabular-nums" style="color: var(--accent-coral); font-weight: 600;">--</span>
+            </div>
+          </div>
+        </div>
+
       </div>
-    </form>
+
+      <!-- Right Column: Live Persona Tuning Studio -->
+      <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+        
+        <div class="pane-surface" style="flex: 1;">
+          <div class="pane-header">
+            <span class="pane-title">🧪 Live Persona Tuning Studio</span>
+            <span id="token-counter-pill" class="delta-badge">~180 tokens</span>
+          </div>
+
+          <div style="padding: 1rem; display: flex; flex-direction: column; gap: 1rem;">
+            <!-- Persona Prompt Editor -->
+            <div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 0.35rem;">
+                <label class="form-label" style="font-size: 0.78rem; color: var(--text-muted);">Base Persona Prompt (Directives &amp; Tone)</label>
+                <span style="font-size: 0.72rem; color: var(--text-dim); font-family: var(--font-mono);">Soft Warning: >2,000 tokens</span>
+              </div>
+              <textarea id="persona-prompt-editor" rows="7" style="width: 100%; background: var(--bg-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 0.65rem; border-radius: var(--radius-sm); font-size: 0.82rem; font-family: var(--font-sans); line-height: 1.5;"></textarea>
+            </div>
+
+            <!-- Simulation Input & Live Preview Test -->
+            <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 0.85rem;">
+              <div style="font-size: 0.78rem; font-weight: 600; color: var(--accent-purple); text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.05em;">
+                Live Simulation Test
+              </div>
+              <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
+                <input type="text" id="sim-message-input" placeholder="e.g. 'yo you around for lunch?'" style="flex: 1; background: var(--bg-surface); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.82rem;" />
+                <button type="button" id="btn-generate-preview" class="btn" style="background: var(--accent-purple); color: #fff; font-weight: 600; border: none; padding: 0.5rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.8rem; cursor: pointer; white-space: nowrap;">
+                  ▶ Generate Preview
+                </button>
+              </div>
+
+              <!-- Output Box -->
+              <div style="font-size: 0.75rem; color: var(--text-dim); margin-bottom: 0.25rem;">Simulated Bot Response:</div>
+              <div id="sim-response-output" class="font-mono" style="background: var(--bg-surface); border: 1px dashed var(--border-focus); border-radius: var(--radius-sm); padding: 0.75rem; font-size: 0.82rem; color: var(--text-main); min-height: 56px; line-height: 1.4;">
+                Type a sample incoming message above and click Generate Preview to test your persona.
+              </div>
+            </div>
+
+            <!-- Timings & Delays -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+              <div>
+                <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Typing Speed (ms/char)</label>
+                <input type="number" id="typing-speed-input" value="45" min="10" max="200" style="width: 100%; background: var(--bg-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 0.45rem; border-radius: var(--radius-sm); font-size: 0.82rem; font-family: var(--font-mono);" />
+              </div>
+              <div>
+                <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Max Typing Delay (ms)</label>
+                <input type="number" id="max-delay-input" value="8000" min="1000" max="30000" style="width: 100%; background: var(--bg-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 0.45rem; border-radius: var(--radius-sm); font-size: 0.82rem; font-family: var(--font-mono);" />
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
   </main>
 
   <script type="module" src="/js/nav.js"></script>
