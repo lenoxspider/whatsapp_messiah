@@ -166,8 +166,8 @@ async function loadTasksOnly() {
 
 async function loadContacts() {
   try {
-    const contacts = await apiRequest('/api/contacts');
-    allContacts = Array.isArray(contacts) ? contacts : [];
+    const res = await apiRequest('/api/contacts');
+    allContacts = Array.isArray(res) ? res : (res?.contacts || []);
     populateContactSelect();
     renderContactsTable();
     updateMetrics();

@@ -297,9 +297,14 @@ function renderDossier(data) {
     <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
         <div>
-          <h2 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.2rem;">
-            ${escapeHtml(name)}
-          </h2>
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <h2 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.2rem;">
+              ${escapeHtml(name)}
+            </h2>
+            <button type="button" id="btn-rename-contact" class="btn" style="background: transparent; border: 1px solid var(--border-subtle); color: var(--text-muted); font-size: 0.72rem; padding: 0.2rem 0.55rem; border-radius: 4px; cursor: pointer;" title="Rename contact">
+              ✏️ Rename
+            </button>
+          </div>
           <div style="font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-dim); display: flex; gap: 0.75rem;">
             <span>📱 +${phone}</span>
             <span>🆔 ${escapeHtml(contact.jid)}</span>
@@ -531,6 +536,25 @@ function renderDossier(data) {
         body: { fact: factText, category }
       });
       showToast('Memory fact added!', 'success');
+      loadContactDossier(contact.jid);
+      loadContacts();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+
+  // Bind Rename Contact
+  const btnRename = document.getElementById('btn-rename-contact');
+  btnRename?.addEventListener('click', async () => {
+    const newName = prompt(`Enter friendly name for +${phone}:`, contact.name || '');
+    if (newName === null) return;
+    try {
+      await apiRequest(`/api/contacts/${encodeURIComponent(contact.jid)}`, {
+        method: 'PUT',
+        body: { name: newName.trim() || null }
+      });
+      showToast('Contact renamed successfully!', 'success');
+      contact.name = newName.trim() || null;
       loadContactDossier(contact.jid);
       loadContacts();
     } catch (err) {

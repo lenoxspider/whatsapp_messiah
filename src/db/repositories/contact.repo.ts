@@ -15,13 +15,15 @@ export class ContactRepository {
     const now = Date.now();
 
     if (existing) {
+      // Don't overwrite an existing name with a fallback pushName if existing name was already customized
+      const effectiveName = existing.name ? (name && existing.name === existing.phone ? name : existing.name) : (name ?? null);
       const updateStmt = this.db.prepare(`
         UPDATE contacts
-        SET name = COALESCE(?, name), last_interaction = ?
+        SET name = ?, last_interaction = ?
         WHERE jid = ?
       `);
-      updateStmt.run(name ?? null, now, jid);
-      return { ...existing, name: name ?? existing.name, last_interaction: now };
+      updateStmt.run(effectiveName, now, jid);
+      return { ...existing, name: effectiveName, last_interaction: now };
     }
 
     const insertStmt = this.db.prepare(`
@@ -52,10 +54,18 @@ export class ContactRepository {
     stmt.run(persona, jid);
   }
 
-  updateContact(jid: string, updates: { tier?: ContactTier; custom_persona?: string | null; facts_json?: string | null; autopilot_enabled?: number }): void {
+  updateContact(jid: string, updates: { name?: string | null; phone?: string; tier?: ContactTier; custom_persona?: string | null; facts_json?: string | null; autopilot_enabled?: number }): void {
     const sets: string[] = [];
     const values: any[] = [];
 
+    if (updates.name !== undefined) {
+      sets.push('name = ?');
+      values.push(updates.name);
+    }
+    if (updates.phone !== undefined) {
+      sets.push('phone = ?');
+      values.push(updates.phone);
+    }
     if (updates.tier !== undefined) {
       sets.push('tier = ?');
       values.push(updates.tier);

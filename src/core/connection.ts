@@ -147,6 +147,43 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
     }
   });
 
+  // Contact address book sync loop: Ingest real names and phone numbers saved on phone
+  sock.ev.on('contacts.upsert', (contacts) => {
+    for (const c of contacts) {
+      const realJid = c.jid || (c.id && c.id.endsWith('@s.whatsapp.net') ? c.id : null);
+      if (!realJid) continue;
+      const phone = realJid.split('@')[0].replace(/[^0-9]/g, '');
+      const savedName = c.name || c.verifiedName || c.notify;
+      if (savedName) {
+        contactRepo.upsertContact(realJid, phone, savedName);
+      }
+    }
+    console.log(`[AddressBook] Ingested/synced ${contacts.length} contacts from WhatsApp phone address book.`);
+  });
+
+  sock.ev.on('contacts.update', (updates) => {
+    for (const u of updates) {
+      const realJid = u.jid || (u.id && u.id.endsWith('@s.whatsapp.net') ? u.id : null);
+      if (!realJid) continue;
+      const savedName = u.name || u.verifiedName || u.notify;
+      if (savedName) {
+        const phone = realJid.split('@')[0].replace(/[^0-9]/g, '');
+        contactRepo.upsertContact(realJid, phone, savedName);
+      }
+    }
+  });
+
+  // Modern WhatsApp LID <-> Phone mapping
+  sock.ev.on('chats.phoneNumberShare', async ({ lid, jid }) => {
+    if (lid && jid) {
+      const phone = jid.split('@')[0].replace(/[^0-9]/g, '');
+      const existing = contactRepo.getContact(lid);
+      if (existing) {
+        contactRepo.updateContact(lid, { phone });
+      }
+    }
+  });
+
   // Message event loop
   sock.ev.on('messages.upsert', async (upsert) => {
     try {

@@ -93,9 +93,17 @@ contactsRouter.delete('/facts/:id', (req, res) => {
 
 contactsRouter.put('/:jid', (req, res) => {
   const jid = decodeURIComponent(req.params.jid);
-  const { tier, custom_persona, facts_json } = req.body;
+  const { name, phone, tier, custom_persona, facts_json } = req.body;
 
-  const updates: { tier?: number; custom_persona?: string | null; facts_json?: string | null } = {};
+  const updates: { name?: string | null; phone?: string; tier?: number; custom_persona?: string | null; facts_json?: string | null } = {};
+
+  if (name !== undefined) {
+    updates.name = name ? String(name).trim() : null;
+  }
+
+  if (phone !== undefined) {
+    updates.phone = String(phone).replace(/[^0-9]/g, '');
+  }
 
   if (tier !== undefined) {
     const numTier = Number(tier);
