@@ -58,13 +58,20 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
       continue;
     }
 
-    // DIAGNOSTIC: Log stubs / null-message events so we can see business View-Once arriving
+    // DIAGNOSTIC: Log stubs / null-message events and trigger placeholder resend
     if (!msg.message) {
       const stubJid = msg.key?.remoteJid || 'unknown';
       if ((msg.key as any)?.isViewOnce) {
-        console.warn(`[Router] ⚠️ WhatsApp delivered an unavailable View-Once stub for ${msg.key?.id} from ${stubJid}.`);
+        console.warn(`[Router] ⚠️ WhatsApp delivered an unavailable View-Once stub for ${msg.key?.id} from ${stubJid}. Requesting resend...`);
       } else {
         console.log(`[Router] ⚠️  msg.message is null (stub/receipt) for ${msg.key?.id} from ${stubJid} (upsert.type=${type})`);
+      }
+
+      // Request placeholder resend from primary device so media content gets delivered
+      if (msg.key && typeof (sock as any)?.requestPlaceholderResend === 'function') {
+        (sock as any).requestPlaceholderResend(msg.key).catch((err: any) => {
+          console.warn(`[Router] Failed to request placeholder resend for ${msg.key?.id}:`, err?.message || err);
+        });
       }
       continue;
     }
@@ -72,20 +79,27 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
     // Handle Protocol Events (Revocation, Edits, and View-Once Placeholder Resends)
     const protocolMessage = msg.message?.protocolMessage;
     if (protocolMessage) {
-      if (protocolMessage.type === 0 /* REVOKE */) {
+      const pType = protocolMessage.type;
+      const isRevoke = pType === 0 || pType === 'REVOKE';
+      const isEdit = pType === 14 || pType === 'MESSAGE_EDIT';
+      const isPdoResponse = pType === 17 ||
+        pType === 'PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE' ||
+        Boolean(protocolMessage.peerDataOperationRequestResponseMessage);
+
+      if (isRevoke) {
         const targetKey = protocolMessage.key?.id;
         if (targetKey) {
           await antiRevokeHandler.handleRevoke(targetKey);
         }
         continue;
-      } else if (protocolMessage.type === 14 /* MESSAGE_EDIT */) {
+      } else if (isEdit) {
         const chatJid = msg.key.remoteJid || '';
         const senderJid = msg.key.participant || chatJid;
         await antiEditHandler.handleEdit(protocolMessage, senderJid, chatJid);
         continue;
-      } else if (protocolMessage.type === 17 /* PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE */) {
-        // On macOS Desktop sessions, WhatsApp delivers View-Once media via PLACEHOLDER_MESSAGE_RESEND.
-        // The actual message is encoded as base64 protobuf in webMessageInfoBytes.
+      } else if (isPdoResponse) {
+        // WhatsApp delivers View-Once media via PLACEHOLDER_MESSAGE_RESEND.
+        // The actual message is encoded as base64/binary protobuf in webMessageInfoBytes.
         try {
           const results = (protocolMessage as any)?.peerDataOperationRequestResponseMessage?.peerDataOperationResult;
           if (Array.isArray(results)) {
@@ -95,10 +109,11 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
               if (bytes) {
                 const buf = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes, 'base64');
                 const decoded = BaileysProto.WebMessageInfo.decode(buf);
-                if (decoded?.message) {
-                  console.log(`[Router] 📦 Decoded View-Once placeholder resend for ${decoded.key?.id}`);
+                const plainObj = BaileysProto.WebMessageInfo.toObject(decoded, { defaults: true });
+                if (plainObj?.message) {
+                  console.log(`[Router] 📦 Decoded View-Once placeholder resend for ${plainObj.key?.id || decoded.key?.id}`);
                   // Re-inject as a normal upsert message
-                  upsert.messages.push(decoded as any);
+                  upsert.messages.push(plainObj as any);
                 }
               }
             }
