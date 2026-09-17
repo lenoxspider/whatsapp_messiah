@@ -58,7 +58,7 @@ fi
 
 # 4. Prepare directories and .env file
 echo -e "${CYAN}[3/5] Configuring environment and database paths...${NC}"
-mkdir -p data sessions
+mkdir -p data/media sessions
 
 if [ ! -f .env ]; then
   if [ -f .env.example ]; then
@@ -75,6 +75,8 @@ OPENAI_MODEL=gpt-4o
 DISCORD_WEBHOOK_URL=
 GHOST_HANDLER_ENABLED=1
 AUTONOMOUS_GHOST=0
+AUTO_REJECT_CALLS=1
+FORWARD_MEDIA_TO_DISCORD=1
 TYPING_SPEED_MS=45
 MAX_TYPING_DELAY_MS=8000
 EOF
