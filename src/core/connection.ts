@@ -51,7 +51,7 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
     printQRInTerminal: false,
     auth: state,
     generateHighQualityLinkPreview: true,
-    browser: ['WhatsApp Messiah', 'Chrome', '120.0.6099.109'],
+    browser: Browsers.ubuntu('Chrome'),
     getMessage: async (key) => {
       if (key.id) {
         const msg = messageRepo.getMessageById(key.id);
