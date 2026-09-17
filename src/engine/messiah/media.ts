@@ -45,7 +45,7 @@ export class MediaExtractor {
 
   unwrapMessage(msg: WAMessage): { innerMessage: any; isViewOnce: boolean; caption?: string } {
     let m: any = msg.message;
-    let isViewOnce = Boolean((msg.key as any)?.isViewOnce) || this.deepCheckViewOnce(m);
+    let isViewOnce = Boolean((msg.key as any)?.isViewOnce) || Boolean((msg as any)?.isViewOnce) || this.deepCheckViewOnce(msg);
     let caption = '';
 
     // Recursively unwrap up to 12 container levels (handles WhatsApp Business, ephemeral, bot invokes, deviceSent, etc.)

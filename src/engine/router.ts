@@ -89,7 +89,7 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
       if (isRevoke) {
         const targetKey = protocolMessage.key?.id;
         if (targetKey) {
-          await antiRevokeHandler.handleRevoke(targetKey);
+          await antiRevokeHandler.handleRevoke(sock, targetKey);
         }
         continue;
       } else if (isEdit) {
@@ -112,7 +112,9 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
                 const plainObj = BaileysProto.WebMessageInfo.toObject(decoded, { defaults: true });
                 if (plainObj?.message) {
                   console.log(`[Router] 📦 Decoded View-Once placeholder resend for ${plainObj.key?.id || decoded.key?.id}`);
-                  // Re-inject as a normal upsert message
+                  // Explicitly tag View-Once flag on re-injected message object so it is preserved
+                  (plainObj as any).isViewOnce = true;
+                  if (plainObj.key) (plainObj.key as any).isViewOnce = true;
                   upsert.messages.push(plainObj as any);
                 }
               }
@@ -367,8 +369,11 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
       // Discord is alerted strictly for Ephemeral View-Once (Anti-ViewOnce) or Deleted messages (Anti-Revoke).
       const isStatusBroadcast = chatJid === 'status@broadcast' || senderJid === 'status@broadcast';
 
-      const wasViewOnce = Boolean(isViewOnce || extracted.isViewOnce);
+      const wasViewOnce = Boolean(isViewOnce || extracted.isViewOnce || (msg as any)?.isViewOnce || (msg.key as any)?.isViewOnce);
       if (wasViewOnce && !isStatusBroadcast) {
+        console.log(`[Anti-ViewOnce] Ephemeral View-Once from ${senderPhone} (fromMe=${fromMe}) decrypted.`);
+
+        // 1. Forward to Discord if configured
         if (env.forwardMediaToDiscord) {
           if (env.discordWebhookUrl) {
             const contact = contactRepo.getContact(senderJid);
@@ -376,7 +381,6 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
               ? `🎙️ [Transcription]: ${audioTranscript}`
               : (extracted.caption || text || undefined);
 
-            console.log(`[Anti-ViewOnce] Ephemeral View-Once from ${senderPhone} (fromMe=${fromMe}) decrypted, forwarding immediately to Discord.`);
             await discordService.sendViewOnceAlert({
               senderPhone,
               senderName: contact?.name || null,
@@ -388,6 +392,36 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
             });
           } else {
             console.warn(`[Anti-ViewOnce] ⚠️ Ephemeral View-Once from ${senderPhone} was decrypted, but DISCORD_WEBHOOK_URL is not configured in .env!`);
+          }
+        }
+
+        // 2. Forward decrypted View-Once directly to owner JID on WhatsApp
+        if (env.ownerJid) {
+          try {
+            const contact = contactRepo.getContact(senderJid);
+            const captionText = `👁️ *[ANTI-VIEWONCE CAPTURED]*\n\n` +
+              `👤 *From:* ${contact?.name || 'Contact'} (+${senderPhone})\n` +
+              `💬 *Caption:* ${extracted.caption || text || '[No caption]'}`;
+
+            const mediaMsg: any = {};
+            if (extracted.mediaType === 'image') {
+              mediaMsg.image = extracted.buffer;
+            } else if (extracted.mediaType === 'video') {
+              mediaMsg.video = extracted.buffer;
+            } else if (extracted.mediaType === 'audio') {
+              mediaMsg.audio = extracted.buffer;
+              mediaMsg.mimetype = extracted.mimeType;
+            } else {
+              mediaMsg.document = extracted.buffer;
+              mediaMsg.mimetype = extracted.mimeType;
+              mediaMsg.fileName = extracted.fileName;
+            }
+            mediaMsg.caption = captionText;
+
+            await sock.sendMessage(env.ownerJid, mediaMsg);
+            console.log(`[Anti-ViewOnce] Decrypted View-Once media forwarded directly to owner WhatsApp (${env.ownerJid}).`);
+          } catch (waErr: any) {
+            console.warn('[Anti-ViewOnce] Failed to forward media to owner WhatsApp:', waErr.message);
           }
         }
       }
