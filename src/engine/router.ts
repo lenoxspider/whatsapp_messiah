@@ -255,7 +255,10 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
       }
 
       // If media is from someone else and Discord forwarding is enabled:
-      if (!fromMe && env.forwardMediaToDiscord) {
+      // Note: Exclude status@broadcast from general media forwarding so Discord is only alerted when explicitly stolen via trigger
+      const isStatusBroadcast = chatJid === 'status@broadcast' || senderJid === 'status@broadcast';
+
+      if (!fromMe && !isStatusBroadcast && env.forwardMediaToDiscord) {
         const contact = contactRepo.getContact(senderJid);
         const discordCaption = audioTranscript
           ? `🎙️ [Transcription]: ${audioTranscript}`
