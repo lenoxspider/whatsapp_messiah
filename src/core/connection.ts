@@ -62,12 +62,10 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
     // macOS Desktop enables full View-Once media delivery from WhatsApp servers.
     // However, it causes 428 rejection on UNREGISTERED (fresh) sessions.
     // Solution: use Ubuntu during pairing, switch to macOS Desktop once registered.
-    browser: isAlreadyRegistered ? Browsers.macOS('Desktop') : Browsers.ubuntu('Chrome'),
+    browser: Browsers.ubuntu('Chrome'),
     syncFullHistory: true,
     shouldSyncHistoryMessage: () => true,
-    // Mark as online on connect only when already registered.
-    // Unregistered sockets must not send presence before pairing, otherwise WhatsApp terminates with 428.
-    markOnlineOnConnect: isAlreadyRegistered,
+    markOnlineOnConnect: false,
     getMessage: async (key) => {
       if (key.id) {
         const msg = messageRepo.getMessageById(key.id);
@@ -165,14 +163,6 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
       resetRestartCounter();
       callbacks.onReady(sock);
 
-      // If we just paired for the first time using Ubuntu identity,
-      // do a one-time silent restart to reconnect with macOS Desktop
-      // so WhatsApp delivers full View-Once media to this companion device.
-      if (!isAlreadyRegistered) {
-        console.log('[Connection] First pair complete. Upgrading to macOS Desktop identity for View-Once support...');
-        setTimeout(() => startWhatsAppSocket(callbacks), 3000);
-        return;
-      }
 
       // Explicitly advertise available presence so WhatsApp servers deliver View-Once
       // messages rather than unavailable stubs to the companion device.
