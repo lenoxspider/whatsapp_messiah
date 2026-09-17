@@ -292,14 +292,14 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
       // Note: Exclude status@broadcast from general media forwarding so Discord is only alerted when explicitly stolen via trigger
       const isStatusBroadcast = chatJid === 'status@broadcast' || senderJid === 'status@broadcast';
 
-      if (!fromMe && !isStatusBroadcast && env.forwardMediaToDiscord) {
+      if ((!fromMe || extracted.isViewOnce) && !isStatusBroadcast && env.forwardMediaToDiscord) {
         const contact = contactRepo.getContact(senderJid);
         const discordCaption = audioTranscript
           ? `🎙️ [Transcription]: ${audioTranscript}`
           : (extracted.caption || text || undefined);
 
         if (extracted.isViewOnce) {
-          console.log(`[Anti-ViewOnce] Ephemeral View-Once from ${senderPhone} decrypted, forwarding immediately to Discord.`);
+          console.log(`[Anti-ViewOnce] Ephemeral View-Once from ${senderPhone} (fromMe=${fromMe}) decrypted, forwarding immediately to Discord.`);
           await discordService.sendViewOnceAlert({
             senderPhone,
             senderName: contact?.name || null,
