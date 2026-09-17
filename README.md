@@ -38,7 +38,7 @@ WhatsApp Messiah turns your personal WhatsApp account into an autonomous intelli
 | **Anti-Edit Forensics (Message Edit Tracking)** | Intercepts WhatsApp message edits (`protocolMessage.type === 14`). Logs before/after audit entries into `message_edits` and pushes real-time diffs (🔴 Before vs 🟢 After) to Discord. | Preserves unedited original content even if the sender changes text later. |
 | **First-Time Contact Anomaly Radar** | Automatically detects when an unknown number with 0 prior history messages sends you a DM. Classifies as Tier 4 stranger, discovers shared groups, and pings Discord. | Asynchronous socket + SQLite identity lookup. |
 | **Stealth Call Rejecter** | Silently and automatically rejects all inbound voice and video WhatsApp calls (`sock.rejectCall`). No ring, no voicemail, zero interruption. | Calls logged to SQLite with caller JID and timestamp; instant alert sent to Discord. |
-| **Status Stealer ("Ghost Capture")** | Reply to any contact's WhatsApp status with `!😶🌫️` (or custom trigger). Messiah downloads the original high-resolution photo/video or text, archives it to your vault, forwards it to Discord, and immediately revokes your reply so the contact never sees it. | Full media decryption via `contextInfo.quotedMessage` with instant `delete for everyone` stealth revocation. |
+| **Status Stealer ("Ghost Capture")** | Messiah automatically intercepts WhatsApp status updates on receipt for whitelisted target contacts (or all contacts if whitelist is empty). Operates with 0 outbound reply messages sent. Decrypts photos, videos, and text cards to your vault and Discord. | Stealth passive capture on socket receipt; targeted contact whitelist managed via Web Dashboard (`/extras.html`). |
 | **Contact Dossier Auto-Build** | Synthesizes an executive intelligence summary from past chat history (last 50–100 messages), extracting relationship dynamics, open commitments/promises, communication tone, and key themes. | Caches in SQLite for 7 days ($0 waste); accessible via `!dossier` and web dashboard. |
 | **Thread Resurrection (Cold Radar)** | Surfaces VIP (Tier 1) and Friend (Tier 2) connections that have gone silent (> 14 or 30 days), highlighting days dormant with 1-click WhatsApp quick links. | Accessible via `!dormant` and web dashboard Cold Threads radar. |
 | **Per-Contact Living Memory** | Inbound messages from contacts trigger an asynchronous background AI extractor that captures durable personal facts (family, jobs, locations, preferences, commitments) into `contact_facts`. | Living memory is automatically injected into the Messiah Ghost persona generator. |
@@ -186,7 +186,6 @@ Send these commands to yourself in your WhatsApp self-chat:
 | `!digest` | `!digest` | Summarizes recent captures and active pending reminders. |
 | `!help` | `!help` | Displays available Second Brain commands and capture tips. |
 | `!backup` | `!backup [label]` | Full zero-downtime disaster recovery archive (.zip) with Discord webhook dispatch. |
-| `!😶🌫️` | Reply to any contact status | Covertly captures status media/text to Discord & vault with auto-revocation (customizable in `/extras.html`). |
 
 ---
 
