@@ -51,7 +51,7 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
     printQRInTerminal: false,
     auth: state,
     generateHighQualityLinkPreview: true,
-    browser: Browsers.macOS('Desktop'),
+    browser: Browsers.macOS('Chrome'),
     syncFullHistory: true,
     shouldSyncHistoryMessage: () => true,
     // Mark as online immediately on connect so WhatsApp sends active delivery receipts.
