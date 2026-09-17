@@ -7,6 +7,7 @@ import { discordService } from '../services/discord.service.js';
 import { secondBrainDispatcher } from './second_brain/dispatcher.js';
 import { messiahHandler } from './messiah/handler.js';
 import type { IncomingMessageContext } from '../types/message.js';
+import { ContactTier } from '../types/contact.js';
 import { env } from '../config/env.js';
 import { openaiService } from '../services/openai.service.js';
 import { noteRepo } from '../db/repositories/note.repo.js';
@@ -352,10 +353,26 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
       outerRaw.includes('audioMessage');
 
     if (mightHaveMedia) {
-    mediaExtractor.extractAndSaveMedia(msg).then(async (extracted) => {
-      if (!extracted) return;
+      // Eager pre-download for Tier 1 & Tier 2 priority contacts
+      const senderContact = contactRepo.getContact(senderJid);
+      const isPriorityContact = senderContact ? (senderContact.tier === ContactTier.TIER1_INNER || senderContact.tier === ContactTier.TIER2_ACQUAINTANCE) : false;
 
-      messageRepo.updateMedia(msgId, extracted.filePath, extracted.mimeType, extracted.isViewOnce);
+      if (isPriorityContact) {
+        try {
+          const eagerExtracted = await mediaExtractor.extractAndSaveMedia(msg);
+          if (eagerExtracted) {
+            messageRepo.updateMedia(msgId, eagerExtracted.filePath, eagerExtracted.mimeType, eagerExtracted.isViewOnce);
+            console.log(`[Anti-Revoke/Eager] ⚡ Eagerly saved media from Tier ${senderContact?.tier} contact (+${senderPhone}) -> ${eagerExtracted.fileName}`);
+          }
+        } catch (eagerErr: any) {
+          console.warn(`[Anti-Revoke/Eager] Priority download failed for ${msgId}: ${eagerErr.message}`);
+        }
+      }
+
+      mediaExtractor.extractAndSaveMedia(msg).then(async (extracted) => {
+        if (!extracted) return;
+
+        messageRepo.updateMedia(msgId, extracted.filePath, extracted.mimeType, extracted.isViewOnce);
 
       // Check if media is an audio / voice note
       const isAudio =

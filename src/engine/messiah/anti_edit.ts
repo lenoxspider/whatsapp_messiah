@@ -13,38 +13,53 @@ export class AntiEditHandler {
     if (!editedPayload) return;
 
     const newContent = extractMessageText(editedPayload);
-    const originalMessage = messageRepo.getMessageById(targetKey);
+    if (!newContent) return;
 
+    const originalMessage = messageRepo.getMessageById(targetKey);
+    const existingEdits = messageEditRepo.getEditsForMessage(targetKey);
+
+    // Determine current effective content before this edit (from prior edit step or original DB record)
+    const previousContent = existingEdits.length > 0
+      ? (existingEdits[existingEdits.length - 1].edited_content || '')
+      : (originalMessage?.content || '');
+
+    if (previousContent === newContent) {
+      console.log(`[Anti-Edit] ℹ️ Edit content identical to latest state for ${targetKey}, skipping duplicate.`);
+      return;
+    }
+
+    const editTimestamp = Number(protocolMessage.timestamp) * 1000 || Date.now();
     const senderPhone = senderJid.split('@')[0].replace(/[^0-9]/g, '');
     const contact = contactRepo.getContact(senderJid);
-    const originalContent = originalMessage?.content || '';
 
-    // Ignore if content hasn't actually changed
-    if (originalContent === newContent) return;
+    console.log(`[Anti-Edit] ✏️ Intercepted edit for ${targetKey} from +${senderPhone} (seq=${existingEdits.length + 1}).`);
+    console.log(`[Anti-Edit] Previous: "${previousContent}" -> Edited: "${newContent}"`);
 
-    console.log(`[Anti-Edit] Intercepted message edit for ${targetKey} from ${senderPhone}.`);
-    console.log(`[Anti-Edit] Original: "${originalContent}" -> Edited: "${newContent}"`);
-
-    // Record audit entry
+    // Record append-only audit entry in message_edits table
     messageEditRepo.recordEdit({
       messageId: targetKey,
       chatJid,
       senderJid,
-      originalContent,
+      originalContent: previousContent,
       editedContent: newContent,
-      timestamp: Date.now()
+      timestamp: editTimestamp
     });
 
-    // Update message table with newest content
-    messageRepo.updateContent(targetKey, newContent);
+    // Handle out-of-order deliveries: resolve the newest edit by timestamp ASC
+    const allEdits = messageEditRepo.getEditsForMessage(targetKey);
+    const latestEdit = allEdits[allEdits.length - 1];
 
-    // Forward diff to Discord
+    if (latestEdit && latestEdit.edited_content) {
+      messageRepo.updateContent(targetKey, latestEdit.edited_content);
+    }
+
+    // Forward diff alert to Discord
     await discordService.sendMessageEditAlert({
       senderPhone,
       senderName: contact?.name || null,
-      originalContent,
+      originalContent: previousContent,
       editedContent: newContent,
-      timestamp: Date.now()
+      timestamp: editTimestamp
     });
   }
 }

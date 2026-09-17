@@ -44,9 +44,9 @@
 - [x] **Eager Local Download**: Download media buffer immediately upon decode and store locally before dispatching alerts.
 
 ### Tier 3: Anti-Revoke & Anti-Edit Protection
-- [ ] **Unconditional Store-On-Arrival**: Save inbound messages and media immediately before any protocol processing; ensure `handleRevoke` only updates existing rows.
-- [ ] **Eager Media Download for Priority Tiers**: Automatically pre-download media from Tier 1–2 contacts immediately upon arrival.
-- [ ] **Append-Only Edit History**: Track message edits as an append-only chain with timestamps to handle out-of-order deliveries.
+- [x] **Unconditional Store-On-Arrival**: Save inbound messages and media immediately before any protocol processing; ensure `handleRevoke` only updates existing rows.
+- [x] **Eager Media Download for Priority Tiers**: Automatically pre-download media from Tier 1–2 contacts immediately upon arrival.
+- [x] **Append-Only Edit History**: Track message edits as an append-only chain with timestamps to handle out-of-order deliveries.
 
 ### Tier 4: Ghost Handler (Autonomous AI Safety)
 - [ ] **Fail-Closed Engine**: On OpenAI rate limits, timeouts, or errors, log and send NOTHING (never output canned error fallback messages).
