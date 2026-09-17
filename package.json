@@ -23,9 +23,11 @@
   "license": "ISC",
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.19",
+    "adm-zip": "^0.6.1",
     "better-sqlite3": "^11.8.1",
     "dotenv": "^16.4.7",
     "express": "^4.22.3",
+    "multer": "^2.4.0",
     "node-cron": "^3.0.3",
     "openai": "^4.86.1",
     "pino": "^9.6.0",
@@ -33,8 +35,10 @@
     "qrcode-terminal": "^0.12.0"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
     "@types/better-sqlite3": "^7.6.12",
     "@types/express": "^5.0.6",
+    "@types/multer": "^2.2.0",
     "@types/node": "^22.13.9",
     "@types/node-cron": "^3.0.11",
     "@types/qrcode-terminal": "^0.12.2",

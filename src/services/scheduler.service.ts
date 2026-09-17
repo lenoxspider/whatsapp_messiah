@@ -3,6 +3,7 @@ import type { WASocket } from '@whiskeysockets/baileys';
 import { reminderRepo } from '../db/repositories/reminder.repo.js';
 import { env } from '../config/env.js';
 import { discordService } from './discord.service.js';
+import { backupService } from './backup.service.js';
 
 class SchedulerService {
   private socketProvider: (() => WASocket | null) | null = null;
@@ -21,7 +22,38 @@ class SchedulerService {
       await this.checkDueReminders();
     });
 
-    console.log('[SchedulerService] Background cron initialized.');
+    // Automated Nightly Disaster Recovery Backup at 03:00 AM
+    cron.schedule('0 3 * * *', async () => {
+      console.log('[SchedulerService] Running scheduled nightly backup...');
+      try {
+        const result = await backupService.createBackup({ label: 'nightly' });
+        console.log(`[SchedulerService] Nightly backup created: ${result.filename} (${backupService.formatBytes(result.sizeBytes)})`);
+        if (env.discordWebhookUrl) {
+          await discordService.sendWebhook({
+            username: 'Messiah Disaster Recovery',
+            avatar_url: 'https://cdn-icons-png.flaticon.com/512/2885/2885417.png',
+            embeds: [
+              {
+                title: '🌙 Nightly Disaster Recovery Backup Completed',
+                description: `Automated 03:00 AM point-in-time snapshot archived safely to \`data/backups/${result.filename}\`.`,
+                color: 0x00e5ff,
+                fields: [
+                  { name: 'Archive', value: `\`${result.filename}\``, inline: false },
+                  { name: 'Size', value: backupService.formatBytes(result.sizeBytes), inline: true },
+                  { name: 'Sessions', value: `${result.manifest.sessionFilesCount} keys`, inline: true },
+                  { name: 'Media Assets', value: `${result.manifest.mediaFilesCount} files`, inline: true }
+                ],
+                timestamp: new Date().toISOString()
+              }
+            ]
+          });
+        }
+      } catch (err) {
+        console.error('[SchedulerService] Nightly backup failed:', err);
+      }
+    });
+
+    console.log('[SchedulerService] Background cron initialized (Reminders: 1m, Nightly Backup: 03:00).');
   }
 
   private async checkDueReminders(): Promise<void> {

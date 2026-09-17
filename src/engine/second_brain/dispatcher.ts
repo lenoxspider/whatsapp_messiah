@@ -12,6 +12,7 @@ import { digestCommand } from './commands/digest.command.js';
 import { whoCommand } from './commands/who.command.js';
 import { dossierCommand } from './commands/dossier.command.js';
 import { dormantCommand } from './commands/dormant.command.js';
+import { backupCommand } from './commands/backup.command.js';
 
 export class SecondBrainDispatcher {
   private commands = new Map<string, CommandHandler>();
@@ -25,6 +26,7 @@ export class SecondBrainDispatcher {
     this.register(whoCommand);
     this.register(dossierCommand);
     this.register(dormantCommand);
+    this.register(backupCommand);
   }
 
   private register(command: CommandHandler): void {

@@ -283,6 +283,92 @@
 
     </div>
 
+    <!-- VPS Migration & Disaster Recovery Deck -->
+    <div class="pane-surface" style="margin-top: 1.5rem;">
+      <div class="pane-header">
+        <div>
+          <span class="pane-title" style="display: flex; align-items: center; gap: 0.5rem;">
+            <span>📦</span> VPS MIGRATION &amp; DISASTER RECOVERY ENGINE
+          </span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <span class="delta-badge" style="background: rgba(0, 229, 255, 0.15); color: var(--accent-blue); border: 1px solid rgba(0, 229, 255, 0.3);">
+            ZERO RE-PAIRING GUARANTEE
+          </span>
+          <button type="button" id="btn-create-backup-top" class="btn" style="background: var(--accent-blue); color: #000; font-weight: 600; border: none; padding: 0.45rem 1rem; border-radius: var(--radius-sm); font-size: 0.78rem; cursor: pointer; display: flex; align-items: center; gap: 0.4rem;">
+            <span>⚡</span> Download Migration Archive (.zip)
+          </button>
+        </div>
+      </div>
+
+      <div style="padding: 1.25rem; display: grid; grid-template-columns: 1.2fr 1fr; gap: 1.5rem;">
+        
+        <!-- Left Sub-Pane: Local Backups & One-Click Creation -->
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-main);">Available Local Snapshots</div>
+            <button type="button" id="btn-refresh-backups" style="background: none; border: none; color: var(--accent-blue); font-size: 0.76rem; cursor: pointer;">↻ Refresh List</button>
+          </div>
+
+          <div style="overflow-x: auto; max-height: 220px; overflow-y: auto; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--bg-elevated);">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.76rem; font-family: var(--font-mono);">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--border-subtle); color: var(--text-muted); text-align: left; background: var(--bg-surface);">
+                  <th style="padding: 0.5rem 0.6rem;">Archive Filename</th>
+                  <th style="padding: 0.5rem 0.6rem; text-align: right;">Size</th>
+                  <th style="padding: 0.5rem 0.6rem;">Timestamp</th>
+                  <th style="padding: 0.5rem 0.6rem; text-align: center;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="backups-table-body">
+                <tr>
+                  <td colspan="4" style="text-align: center; padding: 1.25rem; color: var(--text-dim);">Loading backup archives...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style="font-size: 0.74rem; color: var(--text-dim); line-height: 1.4;">
+            🛡️ <strong style="color: var(--text-muted);">Four-Pillar Preservation:</strong> Each archive packages your SQLite database (<code class="font-mono" style="color: var(--accent-green);">data/messiah.db</code> via WAL-safe <code class="font-mono">VACUUM INTO</code>), all Baileys multi-device session credentials (<code class="font-mono" style="color: var(--accent-blue);">sessions/</code>), decrypted media vault (<code class="font-mono" style="color: var(--accent-purple);">data/media/</code>), and environment keys (<code class="font-mono">.env</code>).
+          </div>
+        </div>
+
+        <!-- Right Sub-Pane: Restore Archive & Quick Migration Guide -->
+        <div style="display: flex; flex-direction: column; gap: 1rem; border-left: 1px solid var(--border-subtle); padding-left: 1.5rem;">
+          
+          <!-- Upload Restore Area -->
+          <div style="background: var(--bg-elevated); border: 1px dashed var(--border-focus); border-radius: var(--radius-sm); padding: 1rem; text-align: center;">
+            <div style="font-size: 0.82rem; font-weight: 600; color: var(--accent-amber); margin-bottom: 0.35rem;">
+              🔄 Restore Backup to this Server
+            </div>
+            <p style="font-size: 0.74rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+              Select a previous Messiah <code class="font-mono">.zip</code> archive to restore all database records, chat logs, and WhatsApp session keys.
+            </p>
+            <div style="display: flex; gap: 0.5rem; justify-content: center; align-items: center;">
+              <input type="file" id="backup-file-input" accept=".zip" style="font-size: 0.75rem; color: var(--text-muted); background: var(--bg-surface); padding: 0.35rem 0.5rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);" />
+              <button type="button" id="btn-upload-restore" class="btn" style="background: var(--accent-amber); color: #000; font-weight: 600; border: none; padding: 0.45rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.78rem; cursor: pointer;">
+                Restore
+              </button>
+            </div>
+            <div id="restore-status-message" style="font-size: 0.75rem; font-family: var(--font-mono); margin-top: 0.5rem; display: none;"></div>
+          </div>
+
+          <!-- Quick CLI Migration Guide -->
+          <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 0.85rem;">
+            <div style="font-size: 0.76rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em;">
+              🚀 Fast VPS-to-VPS Migration (2 Commands)
+            </div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.35rem;">1. On Old VPS, export archive:</div>
+            <pre style="background: var(--bg-surface); padding: 0.4rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.72rem; color: var(--accent-green); margin: 0 0 0.5rem 0; overflow-x: auto;"><code>./scripts/backup.sh migration</code></pre>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.35rem;">2. On New VPS, restore state:</div>
+            <pre style="background: var(--bg-surface); padding: 0.4rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.72rem; color: var(--accent-blue); margin: 0; overflow-x: auto;"><code>./scripts/restore.sh messiah-backup-*.zip</code></pre>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
   </main>
 
   <script type="module" src="/js/nav.js"></script>

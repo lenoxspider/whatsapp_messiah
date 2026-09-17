@@ -329,8 +329,161 @@ Style Guidelines:
 
   document.getElementById('btn-refresh-telemetry')?.addEventListener('click', loadTelemetry);
 
+  // ==========================================
+  // VPS Migration & Disaster Recovery Deck
+  // ==========================================
+  const btnCreateBackupTop = document.getElementById('btn-create-backup-top');
+  const btnRefreshBackups = document.getElementById('btn-refresh-backups');
+  const backupsTableBody = document.getElementById('backups-table-body');
+  const backupFileInput = document.getElementById('backup-file-input');
+  const btnUploadRestore = document.getElementById('btn-upload-restore');
+  const restoreStatusMessage = document.getElementById('restore-status-message');
+
+  async function loadBackups() {
+    if (!backupsTableBody) return;
+    try {
+      const res = await apiRequest('/api/ops/backups');
+      if (!res.backups || res.backups.length === 0) {
+        backupsTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 1.25rem; color: var(--text-dim);">No backup archives found in data/backups/. Click Download above to create one.</td></tr>';
+        return;
+      }
+
+      backupsTableBody.innerHTML = res.backups.map(b => {
+        const timeFormatted = new Date(b.createdAt).toLocaleString();
+        return `
+          <tr style="border-bottom: 1px solid var(--border-subtle);">
+            <td style="padding: 0.5rem 0.6rem; color: var(--accent-blue); font-weight: 600;">
+              ${b.filename}
+            </td>
+            <td style="padding: 0.5rem 0.6rem; text-align: right; color: var(--accent-green);">
+              ${b.formattedSize}
+            </td>
+            <td style="padding: 0.5rem 0.6rem; color: var(--text-muted); font-size: 0.72rem;">
+              ${timeFormatted}
+            </td>
+            <td style="padding: 0.5rem 0.6rem; text-align: center; white-space: nowrap;">
+              <a href="/api/ops/backups/download/${encodeURIComponent(b.filename)}" class="btn" style="background: var(--bg-hover); color: var(--text-main); text-decoration: none; padding: 0.25rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.72rem; margin-right: 0.35rem; border: 1px solid var(--border-subtle);" download>
+                ⬇️ Download
+              </a>
+              <button type="button" class="btn btn-delete-backup" data-filename="${b.filename}" style="background: rgba(255, 107, 107, 0.15); color: var(--accent-coral); border: 1px solid rgba(255, 107, 107, 0.3); padding: 0.25rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.72rem; cursor: pointer;">
+                🗑️
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      // Bind delete buttons
+      document.querySelectorAll('.btn-delete-backup').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const filename = btn.getAttribute('data-filename');
+          if (!confirm(`Delete backup ${filename}?`)) return;
+          try {
+            await apiRequest(`/api/ops/backups/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+            showToast(`Deleted ${filename}`, 'success');
+            loadBackups();
+          } catch (err) {
+            showToast(err.message, 'error');
+          }
+        });
+      });
+    } catch (err) {
+      backupsTableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 1.25rem; color: var(--accent-coral);">Failed to load backups: ${err.message}</td></tr>`;
+    }
+  }
+
+  btnRefreshBackups?.addEventListener('click', loadBackups);
+
+  // Generate & Download Backup
+  btnCreateBackupTop?.addEventListener('click', async () => {
+    btnCreateBackupTop.disabled = true;
+    const origHtml = btnCreateBackupTop.innerHTML;
+    btnCreateBackupTop.innerHTML = `<span>⏳</span> Archiving &amp; Snapshotting WAL...`;
+
+    try {
+      const res = await apiRequest('/api/ops/backups/generate', {
+        method: 'POST',
+        body: { label: 'manual', includeMedia: true }
+      });
+
+      showToast(`Migration archive ready: ${res.backup.formattedSize}`, 'success');
+      loadBackups();
+
+      // Trigger instant browser download
+      const downloadUrl = `/api/ops/backups/download/${encodeURIComponent(res.backup.filename)}`;
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = res.backup.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      showToast(`Backup error: ${err.message}`, 'error');
+    } finally {
+      btnCreateBackupTop.disabled = false;
+      btnCreateBackupTop.innerHTML = origHtml;
+    }
+  });
+
+  // Restore Backup
+  btnUploadRestore?.addEventListener('click', async () => {
+    const file = backupFileInput?.files?.[0];
+    if (!file) {
+      showToast('Please select a .zip backup archive first.', 'error');
+      return;
+    }
+
+    if (!confirm('⚠️ CAUTION: Restoring will overwrite current database records, decrypted media, and WhatsApp session keys with this backup.\n\nAre you sure you want to proceed?')) {
+      return;
+    }
+
+    btnUploadRestore.disabled = true;
+    btnUploadRestore.textContent = 'Restoring...';
+    if (restoreStatusMessage) {
+      restoreStatusMessage.style.display = 'block';
+      restoreStatusMessage.style.color = 'var(--accent-blue)';
+      restoreStatusMessage.textContent = '⏳ Uploading and unpacking archive...';
+    }
+
+    const formData = new FormData();
+    formData.append('backup', file);
+
+    try {
+      const token = localStorage.getItem('messiah_auth_token') || '';
+      const response = await fetch('/api/ops/backups/restore', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      const res = await response.json();
+      if (!response.ok || !res.success) {
+        throw new Error(res.error || 'Restore failed');
+      }
+
+      if (restoreStatusMessage) {
+        restoreStatusMessage.style.color = 'var(--accent-green)';
+        restoreStatusMessage.textContent = `✓ Restore Successful! Restored ${res.restoredFilesCount} files. Please reload your console.`;
+      }
+      showToast('Disaster recovery restore completed successfully!', 'success');
+      loadBackups();
+    } catch (err) {
+      if (restoreStatusMessage) {
+        restoreStatusMessage.style.color = 'var(--accent-coral)';
+        restoreStatusMessage.textContent = `❌ Restore Error: ${err.message}`;
+      }
+      showToast(err.message, 'error');
+    } finally {
+      btnUploadRestore.disabled = false;
+      btnUploadRestore.textContent = 'Restore';
+    }
+  });
+
   loadConfig();
   loadTelemetry();
+  loadBackups();
 }
 
 document.addEventListener('DOMContentLoaded', initConfigPage);

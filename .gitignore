@@ -9,3 +9,6 @@ data/
 .env
 .DS_Store
 tmp-cache/
+manifest.json
+*.zip
+*.tar.gz

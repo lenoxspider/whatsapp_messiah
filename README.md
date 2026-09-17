@@ -161,7 +161,46 @@ Send these commands to yourself in your WhatsApp self-chat:
 | `!remind` | `!remind <time> <task>` | Schedules natural-language time-delayed task notifications. |
 | `!digest` | `!digest` | Summarizes recent captures and active pending reminders. |
 | `!help` | `!help` | Displays available Second Brain commands and capture tips. |
+| `!backup` | `!backup [label]` | Full zero-downtime disaster recovery archive (.zip) with Discord webhook dispatch. |
 | `!😶🌫️` | Reply to any contact status | Covertly captures status media/text to Discord & vault with auto-revocation (customizable in `/extras.html`). |
+
+---
+
+## 📦 Zero-Downtime VPS Migration & Disaster Recovery
+
+When your VPS expires or you want to migrate Messiah to a new server without losing data or re-authenticating, Messiah packages your entire operational state into a single self-contained archive.
+
+### 🛡️ The Four-Pillar State Preservation
+Every backup archive safely bundles:
+1. **`data/messiah.db`**: Atomically snapshotted using SQLite `VACUUM INTO` — safely commits and captures all active WAL journal frames without database locking.
+2. **`sessions/`**: Multi-device Baileys session keys, credentials, and app-state keys. **Zero re-pairing required** — restoring this folder allows Messiah to reconnect to WhatsApp instantly on the new VPS!
+3. **`data/media/`**: All decrypted anti-revoke evidence, View-Once photos/videos, voice notes, and captured statuses.
+4. **`.env`**: Master dashboard password, phone numbers, and API tokens.
+5. **`manifest.json`**: Timestamp, file counts, and SHA-256 integrity checksums.
+
+### 🚀 Migrating to a New VPS in 2 Steps
+
+#### Step 1: Export Archive on Old VPS
+Run the export script or click **Download Migration Archive** on the Web Dashboard:
+```bash
+./scripts/backup.sh migration
+```
+*Tip: You can also text `!backup` to yourself on WhatsApp; if your archive is under 25MB, Messiah sends the `.zip` directly to your Discord webhook!*
+
+#### Step 2: Restore on New VPS
+Copy the archive to your new server and run the one-line restore script:
+```bash
+# Transfer archive to new server
+scp root@OLD_VPS:/path/to/whatsapp_messiah/data/backups/messiah-backup-*.zip /root/whatsapp_messiah/
+
+# On the new server, restore state
+cd /root/whatsapp_messiah
+./scripts/restore.sh messiah-backup-*.zip
+```
+*Messiah unpacks all database tables, session keys, and media, compiles TypeScript, and starts under PM2. Your WhatsApp session resumes instantly.*
+
+### 🌙 Automated Nightly Snapshots
+Messiah automatically runs a scheduled point-in-time snapshot every night at **03:00 AM server time**, keeps the latest 5 local backups, and posts alert telemetry to Discord.
 
 ---
 
