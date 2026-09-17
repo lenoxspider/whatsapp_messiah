@@ -1,5 +1,6 @@
 import type { CommandHandler, CommandContext } from '../../../types/command.js';
 import { noteRepo } from '../../../db/repositories/note.repo.js';
+import { openaiService } from '../../../services/openai.service.js';
 
 export const noteCommand: CommandHandler = {
   name: 'note',
@@ -25,6 +26,13 @@ export const noteCommand: CommandHandler = {
     }
 
     const saved = noteRepo.saveNote(content, tag);
+
+    if (openaiService.isConfigured()) {
+      openaiService.createEmbedding(content).then(emb => {
+        if (emb) noteRepo.updateEmbedding(saved.id, emb);
+      }).catch(() => {});
+    }
+
     await sock.sendMessage(message.chatJid, {
       text: `📝 *Saved Note [#${saved.id}]* \`#${tag}\`\n\n"${content}"`
     });

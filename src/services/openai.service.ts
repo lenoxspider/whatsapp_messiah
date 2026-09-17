@@ -406,6 +406,40 @@ Provide a 3-4 sentence concise texting style guide that an AI can use to sound e
     }
   }
 
+  async createEmbedding(text: string): Promise<Float32Array | null> {
+    if (!this.isConfigured() || !text || !text.trim()) return null;
+    const client = this.getClient();
+    const startTime = Date.now();
+
+    try {
+      const response = await client.embeddings.create({
+        model: 'text-embedding-3-small',
+        input: text.slice(0, 8000)
+      });
+
+      const latency = Date.now() - startTime;
+      const promptTokens = response.usage?.prompt_tokens || 0;
+      const cost = (promptTokens / 1_000_000) * 0.02;
+
+      llmCallRepo.logCall({
+        model: 'text-embedding-3-small',
+        purpose: 'vector_embedding',
+        promptTokens,
+        completionTokens: 0,
+        totalTokens: promptTokens,
+        costUsd: cost,
+        latencyMs: latency
+      });
+
+      const vector = response.data[0]?.embedding;
+      if (!vector) return null;
+      return new Float32Array(vector);
+    } catch (err: any) {
+      console.warn(`[Embedding Error]: ${err.message}`);
+      return null;
+    }
+  }
+
   async askSecondBrain(query: string, contextualNotes: string = ''): Promise<string> {
     const client = this.getClient();
 

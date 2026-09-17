@@ -122,5 +122,14 @@ export function initializeDatabaseSchema(): void {
   if (!columnNames.has('is_view_once')) {
     db.exec(`ALTER TABLE messages ADD COLUMN is_view_once INTEGER NOT NULL DEFAULT 0;`);
   }
+  if (!columnNames.has('embedding')) {
+    db.exec(`ALTER TABLE messages ADD COLUMN embedding BLOB;`);
+  }
+
+  const noteCols = db.prepare(`PRAGMA table_info(notes)`).all() as Array<{ name: string }>;
+  const noteColNames = new Set(noteCols.map(c => c.name));
+  if (!noteColNames.has('embedding')) {
+    db.exec(`ALTER TABLE notes ADD COLUMN embedding BLOB;`);
+  }
 }
 

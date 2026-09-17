@@ -39,7 +39,12 @@ export const askCommand: CommandHandler = {
       switch (name) {
         case 'search_vault': {
           const limit = Math.min(Number(args.limit) || 5, 10);
-          const notes = noteRepo.searchNotesAdvanced(String(args.query || ''), limit);
+          const q = String(args.query || '');
+          let queryVector: Float32Array | null = null;
+          if (openaiService.isConfigured()) {
+            queryVector = await openaiService.createEmbedding(q);
+          }
+          const notes = noteRepo.searchHybrid(q, limit, queryVector);
           return notes.map(n => ({
             id: n.id,
             tag: n.tag,
@@ -53,6 +58,11 @@ export const askCommand: CommandHandler = {
           if (!content) throw new Error('Content is required');
           const tag = String(args.tag || 'inbox').trim().replace(/^#/, '');
           const saved = noteRepo.saveNote(content, tag);
+          if (openaiService.isConfigured()) {
+            openaiService.createEmbedding(content).then(emb => {
+              if (emb) noteRepo.updateEmbedding(saved.id, emb);
+            }).catch(() => {});
+          }
           return { id: saved.id, tag: saved.tag, content: saved.content, status: 'saved' };
         }
 

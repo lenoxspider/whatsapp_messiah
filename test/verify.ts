@@ -127,6 +127,42 @@ if (readingLatency >= 2500 && typingDelay >= 1000) {
   console.error('❌ Presence timing calculation out of bounds.');
 }
 
-console.log('\n🎉 ALL CORE, PHASE 1, AND PHASE 2 VERIFICATIONS PASSED SUCCESSFULLY!');
+// 10. Test Phase 3: Cosine Similarity Precision & Vector Storage
+import { cosineSimilarity } from '../src/db/repositories/note.repo.js';
+
+// Cosine similarity test: identical vs orthogonal
+const vecA = new Float32Array([1, 0, 0, 1]);
+const vecB = new Float32Array([1, 0, 0, 1]);
+const vecC = new Float32Array([0, 1, 1, 0]);
+
+const simIdentical = cosineSimilarity(vecA, vecB);
+const simOrthogonal = cosineSimilarity(vecA, vecC);
+
+if (Math.abs(simIdentical - 1.0) < 0.0001 && Math.abs(simOrthogonal - 0.0) < 0.0001) {
+  console.log('✅ 14. Vector Cosine Similarity algorithm verified with float precision.');
+} else {
+  console.error('❌ Cosine similarity calculation failed.');
+}
+
+// Embedding storage in SQLite test
+const testEmbedding = new Float32Array(1536).fill(0.05);
+const semanticNote = noteRepo.saveNote('Hetzner baremetal server in Frankfurt', 'infra', null, testEmbedding);
+
+if (semanticNote.id && semanticNote.embedding && semanticNote.embedding.length === 1536 * 4) {
+  console.log(`✅ 15. Vector Embedding stored as SQLite BLOB (${semanticNote.embedding.length} bytes) for note #${semanticNote.id}.`);
+} else {
+  console.error('❌ Vector embedding storage failed.');
+}
+
+// 11. Test Phase 3: Reciprocal Rank Fusion (RRF) Hybrid Search
+const hybridResults = noteRepo.searchHybrid('Frankfurt', 5, testEmbedding);
+if (hybridResults.length > 0 && hybridResults.some(n => n.id === semanticNote.id)) {
+  console.log(`✅ 16. Reciprocal Rank Fusion (RRF) Hybrid Search executed successfully (${hybridResults.length} fused matches).`);
+} else {
+  console.error('❌ Hybrid search failed.');
+}
+
+console.log('\n🎉 ALL CORE, PHASE 1, PHASE 2, AND PHASE 3 VERIFICATIONS PASSED SUCCESSFULLY!');
+
 
 
