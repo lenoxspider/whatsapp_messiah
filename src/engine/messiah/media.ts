@@ -12,6 +12,7 @@ export interface ExtractedMedia {
   filePath: string;
   fileName: string;
   mimeType: string;
+  mediaType: 'image' | 'video' | 'audio' | 'document' | 'sticker';
   isViewOnce: boolean;
   buffer: Buffer;
   caption?: string;
@@ -323,6 +324,7 @@ export class MediaExtractor {
         filePath,
         fileName,
         mimeType,
+        mediaType: downloadType,
         isViewOnce,
         buffer,
         caption

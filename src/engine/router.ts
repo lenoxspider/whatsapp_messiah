@@ -268,6 +268,7 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
 
       // Check if media is an audio / voice note
       const isAudio =
+        extracted.mediaType === 'audio' ||
         extracted.mimeType.startsWith('audio/') ||
         extracted.fileName.endsWith('.ogg') ||
         extracted.fileName.endsWith('.mp3') ||
@@ -275,7 +276,11 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
 
       let audioTranscript = '';
 
-      if (isAudio && openaiService.isConfigured()) {
+      // Only transcribe audio if relevant: Self-Chat (Second Brain) or 1-on-1 DM (Messiah Ghost Handler).
+      // Skip group chats to prevent burning OpenAI Whisper credits on group voice notes.
+      const shouldTranscribe = isAudio && openaiService.isConfigured() && (isSelfChat || (!fromMe && !isGroup));
+
+      if (shouldTranscribe) {
         try {
           console.log(`[Whisper] Transcribing audio note (${extracted.fileName})...`);
           audioTranscript = await openaiService.transcribeAudio(extracted.buffer, extracted.fileName, extracted.mimeType);
@@ -300,39 +305,27 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
         }
       }
 
-      // If media is from someone else and Discord forwarding is enabled:
-      // Note: Exclude status@broadcast from general media forwarding so Discord is only alerted when explicitly stolen via trigger
+      // If media is View-Once and Discord forwarding is enabled:
+      // Note: Regular everyday media (stickers, normal photos, group voice notes) are archived silently in SQLite & data/media.
+      // Discord is alerted strictly for Ephemeral View-Once (Anti-ViewOnce) or Deleted messages (Anti-Revoke).
       const isStatusBroadcast = chatJid === 'status@broadcast' || senderJid === 'status@broadcast';
 
-      if ((!fromMe || extracted.isViewOnce) && !isStatusBroadcast && env.forwardMediaToDiscord) {
+      if (extracted.isViewOnce && !isStatusBroadcast && env.forwardMediaToDiscord) {
         const contact = contactRepo.getContact(senderJid);
         const discordCaption = audioTranscript
           ? `🎙️ [Transcription]: ${audioTranscript}`
           : (extracted.caption || text || undefined);
 
-        if (extracted.isViewOnce) {
-          console.log(`[Anti-ViewOnce] Ephemeral View-Once from ${senderPhone} (fromMe=${fromMe}) decrypted, forwarding immediately to Discord.`);
-          await discordService.sendViewOnceAlert({
-            senderPhone,
-            senderName: contact?.name || null,
-            caption: discordCaption,
-            timestamp: Number(msg.messageTimestamp) * 1000 || Date.now(),
-            buffer: extracted.buffer,
-            fileName: extracted.fileName,
-            mimeType: extracted.mimeType
-          });
-        } else {
-          console.log(`[Media Inbound] Media from ${senderPhone} saved to ${extracted.fileName}, forwarding to Discord.`);
-          await discordService.sendIncomingMediaAlert({
-            senderPhone,
-            senderName: contact?.name || null,
-            caption: discordCaption,
-            timestamp: Number(msg.messageTimestamp) * 1000 || Date.now(),
-            buffer: extracted.buffer,
-            fileName: extracted.fileName,
-            mimeType: extracted.mimeType
-          });
-        }
+        console.log(`[Anti-ViewOnce] Ephemeral View-Once from ${senderPhone} (fromMe=${fromMe}) decrypted, forwarding immediately to Discord.`);
+        await discordService.sendViewOnceAlert({
+          senderPhone,
+          senderName: contact?.name || null,
+          caption: discordCaption,
+          timestamp: Number(msg.messageTimestamp) * 1000 || Date.now(),
+          buffer: extracted.buffer,
+          fileName: extracted.fileName,
+          mimeType: extracted.mimeType
+        });
       }
     }).catch(err => {
       console.warn(`[Media Extraction Error] ${msgId}: ${err.message}`);
