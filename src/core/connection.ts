@@ -50,10 +50,8 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
     logger,
     printQRInTerminal: false,
     auth: state,
-    // SMB_ANDROID platform identity is required for WhatsApp Business accounts
-    // to deliver View-Once messages to companion devices.
-    // Stock Baileys uses WEB which causes Business accounts to send empty envelopes (1 tick).
-    browser: ['Ubuntu', 'smb_android', '22.04.4'] as [string, string, string],
+    generateHighQualityLinkPreview: true,
+    browser: Browsers.ubuntu('Chrome'),
     // Mark as online immediately on connect so WhatsApp sends active delivery receipts.
     // Without this, sendActiveReceipts stays false → receipts sent as 'inactive' →
     // WhatsApp Business servers skip View-Once delivery to what they see as an offline device.
