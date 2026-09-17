@@ -38,8 +38,26 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
 
   activeSocket = sock;
 
-  // Provide socket triggers to dashboard
+  // Provide socket triggers to dashboard with auto-recovery
   dashboardState.requestPairingCodeFn = async (phone: string) => {
+    // If WebSocket is closed or in a bad state, start a fresh socket
+    const ws = sock.ws as any;
+    if (!ws || (ws.isOpen !== undefined && !ws.isOpen)) {
+      console.log('[Pairing] Socket was closed. Booting fresh connection for pairing...');
+      const freshSock = await startWhatsAppSocket(callbacks);
+      // Wait for socket handshake (max 4s)
+      await new Promise<void>((resolve) => {
+        const timeout = setTimeout(resolve, 3500);
+        freshSock.ev.on('connection.update', (u) => {
+          if (u.qr || (freshSock.ws as any)?.isOpen) {
+            clearTimeout(timeout);
+            resolve();
+          }
+        });
+      });
+      return await freshSock.requestPairingCode(phone);
+    }
+
     return await sock.requestPairingCode(phone);
   };
 
@@ -51,7 +69,9 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
   };
 
   dashboardState.logoutFn = async () => {
-    await sock.logout();
+    try {
+      await sock.logout();
+    } catch {}
     dashboardState.setStatus('disconnected', 'Logged out by user');
   };
 
@@ -66,11 +86,11 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
     await handlePairing(sock, update, !!state.creds.registered);
 
     if (connection === 'close') {
-      const decision = evaluateDisconnect(lastDisconnect?.error);
+      const decision = evaluateDisconnect(lastDisconnect?.error, !!state.creds.registered);
       dashboardState.setStatus('disconnected', decision.reason);
 
       if (decision.shouldReconnect) {
-        setTimeout(() => startWhatsAppSocket(callbacks), 5000);
+        setTimeout(() => startWhatsAppSocket(callbacks), 4000);
       }
     } else if (connection === 'open') {
       console.log('\n✅ [Connection] WhatsApp Messiah is connected and listening.');
