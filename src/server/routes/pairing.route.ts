@@ -3,13 +3,30 @@ import { dashboardState } from '../state.js';
 
 export const pairingRouter = Router();
 
+function sanitizePhoneNumber(input: string): string {
+  let clean = input.replace(/[^0-9]/g, '');
+  // Auto-strip local trunk '0' mistakenly entered after international country codes
+  if (/^2330[0-9]{9}$/.test(clean)) {
+    clean = '233' + clean.slice(4); // Ghana
+  } else if (/^2340[0-9]{10}$/.test(clean)) {
+    clean = '234' + clean.slice(4); // Nigeria
+  } else if (/^440[0-9]{10}$/.test(clean)) {
+    clean = '44' + clean.slice(3);  // UK
+  } else if (/^2540[0-9]{9}$/.test(clean)) {
+    clean = '254' + clean.slice(4); // Kenya
+  } else if (/^270[0-9]{9}$/.test(clean)) {
+    clean = '27' + clean.slice(3);  // South Africa
+  }
+  return clean;
+}
+
 pairingRouter.post('/code', async (req, res) => {
   const { phone } = req.body;
   if (!phone || typeof phone !== 'string') {
     return res.status(400).json({ error: 'Valid phone number is required.' });
   }
 
-  const cleanPhone = phone.replace(/[^0-9]/g, '');
+  const cleanPhone = sanitizePhoneNumber(phone);
   if (cleanPhone.length < 8) {
     return res.status(400).json({ error: 'Phone number is too short. Include country code.' });
   }
@@ -19,6 +36,7 @@ pairingRouter.post('/code', async (req, res) => {
   }
 
   try {
+    console.log(`[Pairing] Requesting 8-digit pairing code for sanitized phone: +${cleanPhone}`);
     const code = await dashboardState.requestPairingCodeFn(cleanPhone);
     const formatted = code?.match(/.{1,4}/g)?.join('-') || code;
     dashboardState.setPairingCode(formatted);
