@@ -166,6 +166,16 @@ export class MediaExtractor {
 
   async extractAndSaveMedia(msg: WAMessage): Promise<ExtractedMedia | null> {
     try {
+      // DIAGNOSTIC: Log the outer message keys to understand business account structures
+      const outerKeys = Object.keys(msg.message || {});
+      const isKnownBusinessWrapper = outerKeys.some(k =>
+        ['deviceSentMessage', 'interactiveMessage', 'templateMessage', 'buttonsMessage',
+         'botInvokeMessage', 'associatedChildMessage', 'groupMentionedMessage', 'ptvMessage'].includes(k)
+      );
+      if (isKnownBusinessWrapper) {
+        console.log(`[MediaExtractor] 🔍 Business wrapper detected (keys: ${outerKeys.join(', ')}) for msg ${msg.key.id}`);
+      }
+
       const { innerMessage, isViewOnce, caption: unwrappedCaption } = this.unwrapMessage(msg);
       if (!innerMessage) return null;
 
@@ -214,7 +224,19 @@ export class MediaExtractor {
         }
       }
 
-      if (!mediaPayload) return null;
+      // DIAGNOSTIC DUMP: If still no media payload, log full inner message structure
+      if (!mediaPayload) {
+        const innerKeys = Object.keys(innerMessage || {});
+        console.error(`[MediaExtractor] ❌ Could not find media payload for ${msg.key.id}.`);
+        console.error(`[MediaExtractor] Inner keys after unwrap: [${innerKeys.join(', ')}]`);
+        console.error(`[MediaExtractor] Raw outer message: ${JSON.stringify(msg.message, (k, v) => {
+          // Truncate large binary fields (mediaKey, fileEncSha256, etc.)
+          if (typeof v === 'string' && v.length > 100) return v.slice(0, 50) + '...';
+          if (v instanceof Uint8Array) return '[Uint8Array]';
+          return v;
+        }, 2).slice(0, 3000)}`);
+        return null;
+      }
 
       const rawMime: string = mediaPayload.mimetype || '';
       let ext = 'bin';

@@ -100,7 +100,8 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
     );
     if (isBotEcho) continue;
 
-    console.log(`[Message Inbound] chat=${chatJid} fromMe=${fromMe} text="${text}"`);
+    const allMsgKeys = Object.keys(msg.message || {});
+    console.log(`[Message Inbound] chat=${chatJid} fromMe=${fromMe} type=[${allMsgKeys.join(', ')}] text="${text}"`);
 
     // 0. COVERT OPS: STATUS STEALER ("GHOST CAPTURE")
     const rawInnerMsg =
