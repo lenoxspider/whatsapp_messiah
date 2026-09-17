@@ -265,6 +265,64 @@ export class DiscordService {
     }
   }
 
+  async sendMessageEditAlert(details: {
+    senderPhone: string;
+    senderName?: string | null;
+    originalContent: string;
+    editedContent: string;
+    timestamp: number;
+  }): Promise<void> {
+    await this.sendWebhook({
+      username: 'Messiah Forensic Sentinel (Anti-Edit)',
+      avatar_url: 'https://cdn-icons-png.flaticon.com/512/1828/1828911.png',
+      embeds: [
+        {
+          title: '✏️ Message Edit Intercepted & Preserved',
+          color: 0x3b82f6, // Blue
+          description: `A contact edited a previously sent message:`,
+          fields: [
+            { name: 'Contact', value: `${details.senderName || 'Unknown'} (+${details.senderPhone})`, inline: true },
+            { name: 'Edit Timestamp', value: new Date(details.timestamp).toLocaleString(), inline: true },
+            { name: '🔴 Original (Before)', value: details.originalContent || '[Empty/Media]', inline: false },
+            { name: '🟢 Edited (After)', value: details.editedContent || '[Empty/Media]', inline: false }
+          ],
+          timestamp: new Date().toISOString()
+        }
+      ]
+    });
+  }
+
+  async sendFirstTimeContactAlert(details: {
+    senderPhone: string;
+    senderName?: string | null;
+    initialMessage: string;
+    sharedGroups: Array<{ subject: string; memberCount: number }>;
+    timestamp: number;
+  }): Promise<void> {
+    const groupsSummary = details.sharedGroups.length > 0
+      ? details.sharedGroups.map(g => `• **${g.subject}** (${g.memberCount} members)`).join('\n')
+      : 'None (Direct unsolicited DM)';
+
+    await this.sendWebhook({
+      username: 'Messiah Sentinel (Anomaly Radar)',
+      avatar_url: 'https://cdn-icons-png.flaticon.com/512/1032/1032989.png',
+      embeds: [
+        {
+          title: '🚨 First-Time Inbound Contact Detected',
+          color: 0xf59e0b, // Amber
+          description: `A new number with zero prior history in your vault has messaged you:`,
+          fields: [
+            { name: 'Caller / Contact', value: `${details.senderName || 'Unknown'} (+${details.senderPhone})`, inline: true },
+            { name: 'Classification', value: '🟡 Tier 4 (Stranger)', inline: true },
+            { name: 'First Inbound Message', value: details.initialMessage || '[Media/Voice/Non-text]', inline: false },
+            { name: `Shared Groups (${details.sharedGroups.length})`, value: groupsSummary, inline: false }
+          ],
+          timestamp: new Date().toISOString()
+        }
+      ]
+    });
+  }
+
   async sendHealthAlert(statusText: string): Promise<void> {
     await this.sendWebhook({
       username: 'Messiah Daemon Monitor',

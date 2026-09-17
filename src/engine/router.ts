@@ -11,6 +11,8 @@ import { env } from '../config/env.js';
 import { openaiService } from '../services/openai.service.js';
 import { noteRepo } from '../db/repositories/note.repo.js';
 import { statusStealRepo } from '../db/repositories/status_steal.repo.js';
+import { antiEditHandler } from './messiah/anti_edit.js';
+import { identityService } from '../services/identity.service.js';
 
 export function isStatusStealerTrigger(inputText: string, configuredTrigger: string): boolean {
   if (!inputText) return false;
@@ -55,14 +57,21 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
   for (const msg of messages) {
     if (!msg.message) continue;
 
-    // Handle Revocation ("Delete for Everyone") events
+    // Handle Protocol Events (Revocation & Message Edits)
     const protocolMessage = msg.message?.protocolMessage;
-    if (protocolMessage && protocolMessage.type === 0 /* REVOKE */) {
-      const targetKey = protocolMessage.key?.id;
-      if (targetKey) {
-        await antiRevokeHandler.handleRevoke(targetKey);
+    if (protocolMessage) {
+      if (protocolMessage.type === 0 /* REVOKE */) {
+        const targetKey = protocolMessage.key?.id;
+        if (targetKey) {
+          await antiRevokeHandler.handleRevoke(targetKey);
+        }
+        continue;
+      } else if (protocolMessage.type === 14 /* MESSAGE_EDIT */) {
+        const chatJid = msg.key.remoteJid || '';
+        const senderJid = msg.key.participant || chatJid;
+        await antiEditHandler.handleEdit(protocolMessage, senderJid, chatJid);
+        continue;
       }
-      continue;
     }
 
     const text = extractMessageText(msg.message);
@@ -176,6 +185,23 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
     }
 
     // 1. SILENT ARCHIVE & MEDIA EXTRACTION
+    // First-time inbound contact anomaly radar
+    const isFirstTimeContact = !fromMe && !isGroup && !isStatus && !messageRepo.hasPriorMessages(senderJid);
+    if (isFirstTimeContact) {
+      console.log(`[Anomaly Radar] First-time contact message detected from ${senderPhone}!`);
+      identityService.resolveIdentity(sock, senderJid, msg.pushName).then(async (profile) => {
+        await discordService.sendFirstTimeContactAlert({
+          senderPhone,
+          senderName: profile.savedName || profile.pushName || null,
+          initialMessage: text || (isViewOnce ? '[View-Once Media]' : '[Media Message]'),
+          sharedGroups: profile.sharedGroups,
+          timestamp: Number(msg.messageTimestamp) * 1000 || Date.now()
+        });
+      }).catch(err => {
+        console.warn(`[Anomaly Radar] Failed to resolve identity: ${err.message}`);
+      });
+    }
+
     // Check if message is a View-Once or standard media message
     let mediaResult = null;
     const isViewOnce = mediaExtractor.isViewOnceMessage(msg);

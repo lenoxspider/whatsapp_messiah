@@ -35,6 +35,8 @@ WhatsApp Messiah turns your personal WhatsApp account into an autonomous intelli
 |---|---|---|
 | **Anti-ViewOnce Interception** | Intercepts ephemeral View-Once photos, voice notes, and videos. Decrypts and saves them permanently to `data/media/` before they vanish, and forwards them instantly to Discord. | Baileys companion handshake emulates `Platform.ANDROID` with multi-wrapper protobuf unwrapping. |
 | **Anti-Revoke 2.0 (Message Preservation)** | Intercepts `ProtocolMessage.REVOKE` ("Delete for everyone"). Preserves original text, photos, audio notes, and video payloads in SQLite with exact revocation timing. | Evidence inspectable via Web Console with dark audio/video players and JSON/CSV export. |
+| **Anti-Edit Forensics (Message Edit Tracking)** | Intercepts WhatsApp message edits (`protocolMessage.type === 14`). Logs before/after audit entries into `message_edits` and pushes real-time diffs (🔴 Before vs 🟢 After) to Discord. | Preserves unedited original content even if the sender changes text later. |
+| **First-Time Contact Anomaly Radar** | Automatically detects when an unknown number with 0 prior history messages sends you a DM. Classifies as Tier 4 stranger, discovers shared groups, and pings Discord. | Asynchronous socket + SQLite identity lookup. |
 | **Stealth Call Rejecter** | Silently and automatically rejects all inbound voice and video WhatsApp calls (`sock.rejectCall`). No ring, no voicemail, zero interruption. | Calls logged to SQLite with caller JID and timestamp; instant alert sent to Discord. |
 | **Status Stealer ("Ghost Capture")** | Reply to any contact's WhatsApp status with `!😶🌫️` (or custom trigger). Messiah downloads the original high-resolution photo/video or text, archives it to your vault, forwards it to Discord, and immediately revokes your reply so the contact never sees it. | Full media decryption via `contextInfo.quotedMessage` with instant `delete for everyone` stealth revocation. |
 | **Per-Contact Living Memory** | Inbound messages from contacts trigger an asynchronous background AI extractor that captures durable personal facts (family, jobs, locations, preferences, commitments) into `contact_facts`. | Living memory is automatically injected into the Messiah Ghost persona generator. |
@@ -149,6 +151,7 @@ Send these commands to yourself in your WhatsApp self-chat:
 | Command | Usage | Description |
 |---|---|---|
 | `!ask` | `!ask <instruction or question>` | Autonomous tool-calling AI agent over your SQLite database. |
+| `!who` | `!who [phone or reply to message]` | Identity & shared group resolver: look up any number or quoted message. |
 | `!note` | `!note [#tag] <content>` | Captures a note directly into your vault. |
 | `!find` | `!find <query>` | Hybrid semantic + keyword search over your notes vault. |
 | `!remind` | `!remind <time> <task>` | Schedules natural-language time-delayed task notifications. |

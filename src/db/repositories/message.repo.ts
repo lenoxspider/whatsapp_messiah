@@ -142,6 +142,29 @@ export class MessageRepository {
     `);
     return stmt.all(limit);
   }
+
+  hasPriorMessages(senderJid: string): boolean {
+    const stmt = this.db.prepare(`
+      SELECT 1 FROM messages
+      WHERE sender_jid = ?
+      LIMIT 1
+    `);
+    return Boolean(stmt.get(senderJid));
+  }
+
+  getMessageStats(senderJid: string): { totalCount: number; firstSeen: number | null; lastSeen: number | null } {
+    const stmt = this.db.prepare(`
+      SELECT COUNT(*) as count, MIN(timestamp) as first_seen, MAX(timestamp) as last_seen
+      FROM messages
+      WHERE sender_jid = ?
+    `);
+    const row = stmt.get(senderJid) as any;
+    return {
+      totalCount: row?.count || 0,
+      firstSeen: row?.first_seen || null,
+      lastSeen: row?.last_seen || null
+    };
+  }
 }
 
 export const messageRepo = new MessageRepository();

@@ -123,6 +123,19 @@ export function initializeDatabaseSchema(): void {
     );
 
     CREATE INDEX IF NOT EXISTS idx_captured_statuses_timestamp ON captured_statuses(timestamp);
+
+    CREATE TABLE IF NOT EXISTS message_edits (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      message_id TEXT NOT NULL,
+      chat_jid TEXT NOT NULL,
+      sender_jid TEXT NOT NULL,
+      original_content TEXT,
+      edited_content TEXT,
+      timestamp INTEGER NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_message_edits_msg_id ON message_edits(message_id);
+    CREATE INDEX IF NOT EXISTS idx_message_edits_timestamp ON message_edits(timestamp);
   `);
 
   // Safe migration for existing SQLite database
