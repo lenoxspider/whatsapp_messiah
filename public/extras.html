@@ -22,21 +22,27 @@
       font-family: var(--font-mono);
       font-weight: 600;
     }
-    .trigger-preset-chip {
+    .target-chip {
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
-      color: var(--text-muted);
+      color: var(--text-main);
       font-size: 0.75rem;
-      padding: 0.25rem 0.6rem;
+      padding: 0.25rem 0.55rem;
       border-radius: var(--radius-sm);
-      cursor: pointer;
       font-family: var(--font-mono);
-      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
     }
-    .trigger-preset-chip:hover {
-      background: var(--bg-elevated);
-      color: #38bdf8;
-      border-color: #38bdf8;
+    .target-chip .remove-btn {
+      color: var(--accent-coral);
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 0.85rem;
+      line-height: 1;
+    }
+    .target-chip .remove-btn:hover {
+      color: #ff4444;
     }
     .switch-label {
       display: flex;
@@ -101,11 +107,11 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
       <div>
         <h1 style="font-size: 1.35rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
-          <span>🥷</span> COVERT OPS & EXTRAS
-          <span class="covert-badge">GHOST CAPTURE</span>
+          <span>🥷</span> COVERT OPS &amp; EXTRAS
+          <span class="covert-badge">STEALTH GHOST CAPTURE</span>
         </h1>
         <p style="color: var(--text-muted); font-size: 0.82rem;">
-          Covert WhatsApp status exfiltration, trigger customization, stealth auto-revocation, and Discord intelligence delivery.
+          Covert WhatsApp status exfiltration for targeted contacts, maintenance operations, and evidence vault inspection.
         </p>
       </div>
 
@@ -115,15 +121,15 @@
       </div>
     </div>
 
-    <!-- Status Stealer Configuration Deck -->
+    <!-- Status Stealer Target Whitelist & Routing Deck -->
     <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.5rem;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
         <div>
           <h2 style="font-size: 0.95rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 0.4rem;">
-            <span>🌫️</span> Status Stealer ("Ghost Capture") Settings
+            <span>🌫️</span> Stealth Status Stealer Target Whitelist
           </h2>
           <p style="color: var(--text-muted); font-size: 0.78rem; margin-top: 0.2rem;">
-            When you view any contact's WhatsApp status and reply with your secret trigger, Messiah downloads the high-res photo/video or text and routes it to Discord.
+            Messiah intercepts status updates strictly for targeted contacts on arrival (0 outbound messages sent).
           </p>
         </div>
         <button id="btn-test-discord" class="btn" style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-size: 0.75rem; padding: 0.35rem 0.75rem; border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; gap: 0.4rem;">
@@ -134,52 +140,38 @@
       <!-- Config Grid -->
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
         
-        <!-- Left: Trigger Configuration -->
+        <!-- Left: Target Management -->
         <div>
           <label style="display: block; font-size: 0.78rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.4rem;">
-            Secret Reply Trigger
+            Add Target Contact (Phone Number)
           </label>
-          <div style="display: flex; gap: 0.5rem; margin-bottom: 0.6rem;">
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
             <input 
               type="text" 
-              id="input-trigger" 
+              id="input-target-phone" 
               class="form-input" 
-              placeholder="e.g. !😶🌫️" 
-              style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 0.95rem; height: 38px; padding: 0 0.85rem; flex: 1;"
+              placeholder="e.g. +233544262808 or 233544262808" 
+              style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 0.85rem; height: 38px; padding: 0 0.85rem; flex: 1;"
             />
-            <button id="btn-save-extras" class="btn" style="background: #38bdf8; color: #07090e; font-weight: 700; border: none; padding: 0 1rem; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.82rem;">
-              Save
+            <button id="btn-add-target" class="btn" style="background: #38bdf8; color: #07090e; font-weight: 700; border: none; padding: 0 1rem; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.82rem;">
+              + Add Target
             </button>
           </div>
 
-          <!-- Presets -->
-          <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
-            <span style="font-size: 0.72rem; color: var(--text-dim);">Presets:</span>
-            <button class="trigger-preset-chip" data-trigger="!😶🌫️">!😶🌫️ (Face in clouds)</button>
-            <button class="trigger-preset-chip" data-trigger="!yoink">!yoink</button>
-            <button class="trigger-preset-chip" data-trigger="!steal">!steal</button>
-            <button class="trigger-preset-chip" data-trigger="!grab">!grab</button>
-            <button class="trigger-preset-chip" data-trigger="!save">!save</button>
+          <!-- Active Targets Chips Container -->
+          <div style="font-size: 0.72rem; color: var(--text-dim); margin-bottom: 0.35rem;">Active Status Targets:</div>
+          <div id="targets-list-container" style="display: flex; flex-wrap: wrap; gap: 0.4rem; min-height: 42px; padding: 0.5rem; background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); align-items: center;">
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Loading status targets...</span>
           </div>
         </div>
 
-        <!-- Right: Stealth & Routing Switches -->
+        <!-- Right: Routing & Telemetry Switches -->
         <div>
           <label class="switch-label">
             <div>
-              <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-main);">Stealth Auto-Delete (Revocation)</div>
+              <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-main);">Forward Captured Statuses to Discord</div>
               <div style="font-size: 0.74rem; color: var(--text-muted); max-width: 380px;">
-                Instantly issues a "Delete for Everyone" revocation protocol for your trigger message so the contact never sees it.
-              </div>
-            </div>
-            <input type="checkbox" id="toggle-autodelete" class="switch-input" checked />
-          </label>
-
-          <label class="switch-label">
-            <div>
-              <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-main);">Forward to Discord Webhook</div>
-              <div style="font-size: 0.74rem; color: var(--text-muted); max-width: 380px;">
-                Dispatches high-res media files and rich preview cards directly to your private Discord channel.
+                Dispatches high-res captured photos/videos and text cards directly to your private Discord webhook.
               </div>
             </div>
             <input type="checkbox" id="toggle-discord" class="switch-input" checked />
@@ -197,7 +189,7 @@
             <span>🚀</span> System Maintenance: Live Update &amp; Daemon Restart
           </h2>
           <p style="color: var(--text-muted); font-size: 0.78rem; margin-top: 0.2rem;">
-            Pull latest code from GitHub, install dependencies, compile TypeScript, and reload the PM2 daemon with zero data loss.
+            Pull latest code from GitHub, install dependencies, compile TypeScript, and reload PM2 with zero data loss.
           </p>
         </div>
         <div style="display: flex; align-items: center; gap: 0.5rem;">

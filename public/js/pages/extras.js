@@ -17,15 +17,77 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function loadExtrasConfig() {
   try {
     const config = await apiRequest('/api/extras/config');
-    const inputTrigger = document.getElementById('input-trigger');
-    const toggleAutoDelete = document.getElementById('toggle-autodelete');
     const toggleDiscord = document.getElementById('toggle-discord');
 
-    if (inputTrigger) inputTrigger.value = config.statusStealerTrigger || '!😶🌫️';
-    if (toggleAutoDelete) toggleAutoDelete.checked = config.statusStealerAutoDelete !== false;
     if (toggleDiscord) toggleDiscord.checked = config.statusStealerDiscord !== false;
+    
+    await loadStatusTargets();
   } catch (err) {
     console.error('Failed to load extras config:', err);
+  }
+}
+
+async function loadStatusTargets() {
+  const container = document.getElementById('targets-list-container');
+  if (!container) return;
+
+  try {
+    const data = await apiRequest('/api/extras/targets');
+    const targets = data.targets || [];
+
+    if (targets.length === 0) {
+      container.innerHTML = `<span style="font-size: 0.75rem; color: var(--text-muted);">No targets configured. Statuses captured for all incoming contacts.</span>`;
+      return;
+    }
+
+    container.innerHTML = targets.map(t => `
+      <span class="target-chip">
+        📱 ${t.name ? `${escapeHtml(t.name)} (${escapeHtml(t.phone)})` : escapeHtml(t.phone)}
+        <span class="remove-btn" data-phone="${t.phone}" title="Remove target">×</span>
+      </span>
+    `).join('');
+
+    container.querySelectorAll('.remove-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const phone = btn.dataset.phone;
+        await deleteTarget(phone);
+      });
+    });
+  } catch (err) {
+    console.error('Failed to load status targets:', err);
+    container.innerHTML = `<span style="font-size: 0.75rem; color: var(--accent-coral);">Failed to load targets.</span>`;
+  }
+}
+
+async function addTarget() {
+  const input = document.getElementById('input-target-phone');
+  if (!input) return;
+  const phone = input.value.trim();
+  if (!phone) return;
+
+  try {
+    await apiRequest('/api/extras/targets', {
+      method: 'POST',
+      body: JSON.stringify({ phone })
+    });
+    input.value = '';
+    showSaveBanner();
+    await loadStatusTargets();
+  } catch (err) {
+    alert(`Failed to add target: ${err.message}`);
+  }
+}
+
+async function deleteTarget(phone) {
+  try {
+    await apiRequest(`/api/extras/targets/${encodeURIComponent(phone)}`, {
+      method: 'DELETE'
+    });
+    showSaveBanner();
+    await loadStatusTargets();
+  } catch (err) {
+    alert(`Failed to delete target: ${err.message}`);
   }
 }
 
@@ -211,36 +273,24 @@ function renderEmptyInspector() {
 }
 
 function bindEventListeners() {
-  // Preset chips
-  document.querySelectorAll('.trigger-preset-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const trigger = chip.dataset.trigger;
-      const input = document.getElementById('input-trigger');
-      if (input && trigger) {
-        input.value = trigger;
-      }
-    });
+  // Add target listener
+  document.getElementById('btn-add-target')?.addEventListener('click', addTarget);
+  document.getElementById('input-target-phone')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') addTarget();
   });
 
-  // Save Extras Config
-  document.getElementById('btn-save-extras')?.addEventListener('click', async () => {
-    const trigger = document.getElementById('input-trigger')?.value;
-    const autoDelete = document.getElementById('toggle-autodelete')?.checked;
-    const discord = document.getElementById('toggle-discord')?.checked;
-
+  // Toggle Discord auto-save
+  document.getElementById('toggle-discord')?.addEventListener('change', async (e) => {
     try {
       await apiRequest('/api/extras/config', {
         method: 'POST',
         body: JSON.stringify({
-          statusStealerTrigger: trigger,
-          statusStealerAutoDelete: autoDelete,
-          statusStealerDiscord: discord
+          statusStealerDiscord: e.target.checked
         })
       });
-
       showSaveBanner();
     } catch (err) {
-      alert(`Failed to save settings: ${err.message}`);
+      alert(`Failed to save setting: ${err.message}`);
     }
   });
 
