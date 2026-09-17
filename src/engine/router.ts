@@ -69,7 +69,7 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
       continue;
     }
 
-    // Handle Protocol Events (Revocation & Message Edits)
+    // Handle Protocol Events (Revocation, Edits, and View-Once Placeholder Resends)
     const protocolMessage = msg.message?.protocolMessage;
     if (protocolMessage) {
       if (protocolMessage.type === 0 /* REVOKE */) {
@@ -83,7 +83,33 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
         const senderJid = msg.key.participant || chatJid;
         await antiEditHandler.handleEdit(protocolMessage, senderJid, chatJid);
         continue;
+      } else if (protocolMessage.type === 17 /* PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE */) {
+        // On macOS Desktop sessions, WhatsApp delivers View-Once media via PLACEHOLDER_MESSAGE_RESEND.
+        // The actual message is encoded as base64 protobuf in webMessageInfoBytes.
+        try {
+          const results = (protocolMessage as any)?.peerDataOperationRequestResponseMessage?.peerDataOperationResult;
+          if (Array.isArray(results)) {
+            const { proto: BaileysProto } = await import('@whiskeysockets/baileys');
+            for (const result of results) {
+              const bytes = result?.placeholderMessageResendResponse?.webMessageInfoBytes;
+              if (bytes) {
+                const buf = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes, 'base64');
+                const decoded = BaileysProto.WebMessageInfo.decode(buf);
+                if (decoded?.message) {
+                  console.log(`[Router] 📦 Decoded View-Once placeholder resend for ${decoded.key?.id}`);
+                  // Re-inject as a normal upsert message
+                  upsert.messages.push(decoded as any);
+                }
+              }
+            }
+          }
+        } catch (protoErr: any) {
+          console.warn('[Router] Failed to decode placeholder resend protobuf:', protoErr.message);
+        }
+        continue;
       }
+      // Drop all other protocol messages (receipts, reactions, etc.)
+      continue;
     }
 
     const text = extractMessageText(msg.message);
