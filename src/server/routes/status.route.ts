@@ -15,13 +15,13 @@ statusRouter.get('/', (req, res) => {
     const db = getDatabase();
     const msgRow = db.prepare('SELECT COUNT(*) as count FROM messages').get() as { count: number };
     const noteRow = db.prepare('SELECT COUNT(*) as count FROM notes').get() as { count: number };
-    const remRow = db.prepare('SELECT COUNT(*) as count FROM reminders WHERE status = "pending"').get() as { count: number };
+    const remRow = db.prepare("SELECT COUNT(*) as count FROM reminders WHERE status = 'pending'").get() as { count: number };
 
     messageCount = msgRow?.count || 0;
     notesCount = noteRow?.count || 0;
     remindersCount = remRow?.count || 0;
-  } catch {
-    // Database may not have tables yet if not launched
+  } catch (err: any) {
+    console.error('[Status Route] Stats count error:', err.message);
   }
 
   res.json({

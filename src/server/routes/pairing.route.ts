@@ -26,27 +26,9 @@ pairingRouter.post('/code', async (req, res) => {
 
     res.json({ success: true, code: formatted });
   } catch (err: any) {
-    console.warn('[Pairing Route] First attempt error:', err.message);
-
-    // If connection was closed or dropped, retry once after a short reset
-    try {
-      if (dashboardState.reconnectFn) {
-        await dashboardState.reconnectFn();
-        await new Promise((r) => setTimeout(r, 4000));
-        if (dashboardState.requestPairingCodeFn) {
-          const retryCode = await dashboardState.requestPairingCodeFn(cleanPhone);
-          const formatted = retryCode?.match(/.{1,4}/g)?.join('-') || retryCode;
-          dashboardState.setPairingCode(formatted);
-          dashboardState.setPairedPhone(cleanPhone);
-          return res.json({ success: true, code: formatted });
-        }
-      }
-    } catch (retryErr: any) {
-      console.error('[Pairing Route] Retry failed:', retryErr);
-    }
-
+    console.error('[Pairing Route] Failed to request pairing code:', err.message);
     res.status(500).json({
-      error: err.message || 'Connection closed by WhatsApp. Please try clicking the button again in 3 seconds.'
+      error: err.message || 'Failed to request pairing code from WhatsApp.'
     });
   }
 });

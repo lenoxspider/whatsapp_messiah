@@ -1,6 +1,7 @@
 import makeWASocket, {
   type WASocket,
-  fetchLatestBaileysVersion
+  fetchLatestBaileysVersion,
+  Browsers
 } from '@whiskeysockets/baileys';
 import pino from 'pino';
 import { initAuthState } from './auth.js';
@@ -34,31 +35,13 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
     printQRInTerminal: false,
     auth: state,
     generateHighQualityLinkPreview: true,
-    browser: ['Ubuntu', 'Chrome', '20.0.04']
+    browser: Browsers.ubuntu('Chrome')
   });
 
   activeSocket = sock;
 
-  // Provide socket triggers to dashboard with auto-recovery
+  // Provide direct socket triggers to dashboard
   dashboardState.requestPairingCodeFn = async (phone: string) => {
-    // If WebSocket is closed or in a bad state, start a fresh socket
-    const ws = sock.ws as any;
-    if (!ws || (ws.isOpen !== undefined && !ws.isOpen)) {
-      console.log('[Pairing] Socket was closed. Booting fresh connection for pairing...');
-      const freshSock = await startWhatsAppSocket(callbacks);
-      // Wait for socket handshake (max 4s)
-      await new Promise<void>((resolve) => {
-        const timeout = setTimeout(resolve, 3500);
-        freshSock.ev.on('connection.update', (u) => {
-          if (u.qr || (freshSock.ws as any)?.isOpen) {
-            clearTimeout(timeout);
-            resolve();
-          }
-        });
-      });
-      return await freshSock.requestPairingCode(phone);
-    }
-
     return await sock.requestPairingCode(phone);
   };
 
@@ -82,19 +65,20 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
   // Connection state events
   sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect } = update;
-    const isLinked = Boolean(state.creds.me?.id || state.creds.registered || sock.user?.id);
+    const isRegistered = Boolean(state.creds.registered);
 
-    // Handle QR code or 8-digit pairing code
-    await handlePairing(sock, update, isLinked);
+    // Handle QR code
+    await handlePairing(sock, update, isRegistered);
 
     if (connection === 'close') {
-      const decision = evaluateDisconnect(lastDisconnect?.error, isLinked);
+      const decision = evaluateDisconnect(lastDisconnect?.error, isRegistered);
       dashboardState.setStatus('disconnected', decision.reason);
 
       if (decision.shouldReconnect) {
         setTimeout(() => startWhatsAppSocket(callbacks), 4000);
       }
     } else if (connection === 'open') {
+      state.creds.registered = true;
       const phone = sock.user?.id?.split(':')[0]?.replace(/[^0-9]/g, '') || null;
       if (phone) {
         env.phoneNumber = phone;
