@@ -1,9 +1,15 @@
 import { Router } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
 import { env } from '../../config/env.js';
 import { statusStealRepo } from '../../db/repositories/status_steal.repo.js';
 import { discordService } from '../../services/discord.service.js';
+
+const execAsync = promisify(exec);
+const isWin = process.platform === 'win32';
+const npmCmd = isWin ? 'npm.cmd' : 'npm';
 
 export const extrasRouter = Router();
 
@@ -109,3 +115,101 @@ extrasRouter.post('/test-discord', async (req, res) => {
     res.status(500).json({ error: 'Failed to dispatch alert to Discord webhook.' });
   }
 });
+
+// GET git status & commit version
+extrasRouter.get('/git-status', async (req, res) => {
+  try {
+    const localHash = (await execAsync('git rev-parse --short HEAD')).stdout.trim();
+    const branch = (await execAsync('git rev-parse --abbrev-ref HEAD')).stdout.trim();
+    const logInfo = (await execAsync('git log -1 --format="%s (%cr)"')).stdout.trim();
+
+    let remoteHash = localHash;
+    let isUpToDate = true;
+    try {
+      await execAsync('git fetch origin main', { timeout: 10000 });
+      remoteHash = (await execAsync('git rev-parse --short origin/main')).stdout.trim();
+      isUpToDate = localHash === remoteHash;
+    } catch {}
+
+    res.json({
+      success: true,
+      localHash,
+      remoteHash,
+      branch,
+      logInfo,
+      isUpToDate
+    });
+  } catch (err: any) {
+    console.error('[ExtrasRoute] Git status check failed:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST trigger full update: git pull, npm install, build, and restart
+extrasRouter.post('/update', async (req, res) => {
+  try {
+    console.log('[Updater] Starting automated update sequence...');
+    const logs: string[] = [];
+
+    // 1. Git pull
+    logs.push('📦 [1/3] Pulling latest updates from GitHub (origin/main)...');
+    const pullRes = await execAsync('git pull origin main');
+    logs.push(pullRes.stdout.trim() || 'Git up to date.');
+
+    // 2. npm install
+    logs.push(`📥 [2/3] Installing dependencies (${npmCmd} install)...`);
+    const installRes = await execAsync(`${npmCmd} install --silent`);
+    if (installRes.stdout) logs.push(installRes.stdout.trim());
+
+    // 3. npm run build
+    logs.push(`⚙️ [3/3] Compiling TypeScript (${npmCmd} run build)...`);
+    const buildRes = await execAsync(`${npmCmd} run build`);
+    if (buildRes.stdout) logs.push(buildRes.stdout.trim());
+
+    logs.push('✅ Build completed successfully!');
+    logs.push('🔄 Reloading Messiah daemon under PM2...');
+
+    res.json({
+      success: true,
+      message: 'Update and compilation completed. Reloading daemon...',
+      logs: logs.join('\n')
+    });
+
+    // Schedule graceful reload/restart after sending response
+    setTimeout(async () => {
+      try {
+        console.log('[Updater] Triggering PM2 reload/restart...');
+        await execAsync('pm2 reload whatsapp-messiah || pm2 restart whatsapp-messiah');
+      } catch (pm2Err) {
+        console.warn('[Updater] PM2 reload failed, triggering process exit for supervisor:', pm2Err);
+        process.exit(0);
+      }
+    }, 1500);
+  } catch (err: any) {
+    console.error('[Updater] Update failed:', err);
+    res.status(500).json({
+      success: false,
+      error: err.message || 'Update failed during execution',
+      stderr: err.stderr || ''
+    });
+  }
+});
+
+// POST trigger daemon restart only
+extrasRouter.post('/restart', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Daemon restart triggered. Reconnecting socket in ~3 seconds...'
+  });
+
+  setTimeout(async () => {
+    try {
+      console.log('[Daemon] Restart triggered from Dashboard...');
+      await execAsync('pm2 restart whatsapp-messiah');
+    } catch (pm2Err) {
+      console.warn('[Daemon] PM2 restart failed, triggering process exit for supervisor:', pm2Err);
+      process.exit(0);
+    }
+  }, 1000);
+});
+

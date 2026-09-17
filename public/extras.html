@@ -189,6 +189,69 @@
       </div>
     </div>
 
+    <!-- System Maintenance & Zero-Downtime Daemon Updater -->
+    <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
+        <div>
+          <h2 style="font-size: 0.95rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 0.4rem;">
+            <span>🚀</span> System Maintenance: Live Update &amp; Daemon Restart
+          </h2>
+          <p style="color: var(--text-muted); font-size: 0.78rem; margin-top: 0.2rem;">
+            Pull latest code from GitHub, install dependencies, compile TypeScript, and reload the PM2 daemon with zero data loss.
+          </p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span id="git-status-badge" class="delta-badge" style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25);">
+            CHECKING...
+          </span>
+          <button id="btn-check-update" class="btn" style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-size: 0.75rem; padding: 0.35rem 0.65rem; border-radius: var(--radius-sm); cursor: pointer;">
+            ↻ Check Git
+          </button>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
+        <!-- Left Column: Version & Actions -->
+        <div>
+          <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 0.85rem; margin-bottom: 1rem; font-family: var(--font-mono); font-size: 0.78rem;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.35rem;">
+              <span style="color: var(--text-muted);">Current Commit:</span>
+              <span id="git-commit-hash" style="color: var(--accent-blue); font-weight: 600;">--</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.35rem;">
+              <span style="color: var(--text-muted);">Active Branch:</span>
+              <span id="git-branch" style="color: var(--text-main);">--</span>
+            </div>
+            <div style="color: var(--text-dim); font-size: 0.72rem; margin-top: 0.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" id="git-log-info">
+              Checking git repository...
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 0.75rem;">
+            <button id="btn-update-restart" class="btn" style="flex: 1.3; background: #38bdf8; color: #07090e; font-weight: 700; border: none; padding: 0.6rem 1rem; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.82rem; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
+              <span>⚡</span> Update &amp; Restart
+            </button>
+            <button id="btn-restart-only" class="btn" style="flex: 1; background: var(--bg-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-weight: 600; padding: 0.6rem 0.85rem; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.82rem; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
+              <span>🔄</span> Restart Daemon
+            </button>
+          </div>
+        </div>
+
+        <!-- Right Column: Terminal Logs / Progress Output -->
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+            <span style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono); text-transform: uppercase;">
+              Maintenance Console Output
+            </span>
+            <span id="updater-spinner" style="display: none; font-size: 0.72rem; color: #38bdf8; font-family: var(--font-mono);">
+              ⏳ Executing...
+            </span>
+          </div>
+          <pre id="updater-console" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 0.75rem; height: 110px; overflow-y: auto; font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim); margin: 0; line-height: 1.45;">Ready. Click "Update &amp; Restart" to pull latest commits and reload the daemon.</pre>
+        </div>
+      </div>
+    </div>
+
     <!-- Intercepted Status Vault (Two-Pane Console Layout) -->
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
       <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">

@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   await loadExtrasConfig();
   await loadCapturedStatuses();
+  await initMaintenanceDeck();
 
   bindEventListeners();
 });
@@ -285,3 +286,141 @@ function escapeHtml(text) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
+async function initMaintenanceDeck() {
+  const commitHashEl = document.getElementById('git-commit-hash');
+  const branchEl = document.getElementById('git-branch');
+  const logInfoEl = document.getElementById('git-log-info');
+  const badgeEl = document.getElementById('git-status-badge');
+  const btnCheckUpdate = document.getElementById('btn-check-update');
+  const btnUpdateRestart = document.getElementById('btn-update-restart');
+  const btnRestartOnly = document.getElementById('btn-restart-only');
+  const updaterSpinner = document.getElementById('updater-spinner');
+  const updaterConsole = document.getElementById('updater-console');
+
+  async function checkGitStatus() {
+    if (badgeEl) {
+      badgeEl.textContent = 'CHECKING...';
+      badgeEl.style.color = '#38bdf8';
+    }
+    try {
+      const data = await apiRequest('/api/extras/git-status');
+      if (commitHashEl) commitHashEl.textContent = data.localHash || '--';
+      if (branchEl) branchEl.textContent = data.branch || '--';
+      if (logInfoEl) logInfoEl.textContent = data.logInfo || 'No commit message';
+
+      if (badgeEl) {
+        if (data.isUpToDate) {
+          badgeEl.textContent = 'UP TO DATE';
+          badgeEl.style.color = 'var(--accent-green)';
+          badgeEl.style.background = 'rgba(29, 158, 117, 0.15)';
+          badgeEl.style.borderColor = 'rgba(29, 158, 117, 0.3)';
+        } else {
+          badgeEl.textContent = `UPDATE AVAILABLE (${data.remoteHash})`;
+          badgeEl.style.color = 'var(--accent-amber)';
+          badgeEl.style.background = 'rgba(234, 179, 8, 0.15)';
+          badgeEl.style.borderColor = 'rgba(234, 179, 8, 0.3)';
+        }
+      }
+    } catch (err) {
+      if (badgeEl) {
+        badgeEl.textContent = 'GIT OFFLINE';
+        badgeEl.style.color = 'var(--accent-coral)';
+      }
+    }
+  }
+
+  btnCheckUpdate?.addEventListener('click', checkGitStatus);
+
+  btnUpdateRestart?.addEventListener('click', async () => {
+    if (!confirm('Pull latest changes from GitHub, rebuild, and reload Messiah under PM2?')) return;
+
+    btnUpdateRestart.disabled = true;
+    btnRestartOnly.disabled = true;
+    if (updaterSpinner) updaterSpinner.style.display = 'inline';
+    if (updaterConsole) {
+      updaterConsole.textContent = '⏳ [1/3] Contacting daemon... Running git pull & build sequence...';
+      updaterConsole.style.color = '#38bdf8';
+    }
+
+    try {
+      const res = await apiRequest('/api/extras/update', { method: 'POST' });
+      if (updaterConsole) {
+        updaterConsole.textContent = res.logs || res.message;
+        updaterConsole.style.color = 'var(--accent-green)';
+      }
+
+      pollReconnect('Update complete! Reloading daemon...');
+    } catch (err) {
+      if (updaterConsole) {
+        updaterConsole.textContent = `❌ Update Error: ${err.message}`;
+        updaterConsole.style.color = 'var(--accent-coral)';
+      }
+      btnUpdateRestart.disabled = false;
+      btnRestartOnly.disabled = false;
+      if (updaterSpinner) updaterSpinner.style.display = 'none';
+    }
+  });
+
+  btnRestartOnly?.addEventListener('click', async () => {
+    if (!confirm('Restart the Messiah daemon now?')) return;
+
+    btnRestartOnly.disabled = true;
+    btnUpdateRestart.disabled = true;
+    if (updaterSpinner) updaterSpinner.style.display = 'inline';
+    if (updaterConsole) {
+      updaterConsole.textContent = '⏳ Triggering daemon restart...';
+      updaterConsole.style.color = '#38bdf8';
+    }
+
+    try {
+      const res = await apiRequest('/api/extras/restart', { method: 'POST' });
+      if (updaterConsole) {
+        updaterConsole.textContent = res.message;
+        updaterConsole.style.color = 'var(--accent-green)';
+      }
+      pollReconnect('Daemon restarting...');
+    } catch (err) {
+      if (updaterConsole) {
+        updaterConsole.textContent = `❌ Restart Error: ${err.message}`;
+        updaterConsole.style.color = 'var(--accent-coral)';
+      }
+      btnRestartOnly.disabled = false;
+      btnUpdateRestart.disabled = false;
+      if (updaterSpinner) updaterSpinner.style.display = 'none';
+    }
+  });
+
+  function pollReconnect(statusMsg) {
+    let countdown = 6;
+    const interval = setInterval(async () => {
+      countdown--;
+      if (updaterConsole) {
+        updaterConsole.textContent = `${statusMsg}\nReconnecting to Messiah control plane in ${countdown}s...`;
+      }
+
+      if (countdown <= 0) {
+        clearInterval(interval);
+        try {
+          const status = await apiRequest('/api/status');
+          if (updaterConsole) {
+            updaterConsole.textContent = `✅ Connected! Messiah online (Uptime: ${status.uptimeSeconds || 0}s). Re-checking version...`;
+            updaterConsole.style.color = 'var(--accent-green)';
+          }
+          await checkGitStatus();
+        } catch {
+          if (updaterConsole) {
+            updaterConsole.textContent = '⏳ Server still starting up, please refresh your browser in a few moments.';
+          }
+        } finally {
+          btnUpdateRestart.disabled = false;
+          btnRestartOnly.disabled = false;
+          if (updaterSpinner) updaterSpinner.style.display = 'none';
+        }
+      }
+    }, 1000);
+  }
+
+  await checkGitStatus();
+}
+
