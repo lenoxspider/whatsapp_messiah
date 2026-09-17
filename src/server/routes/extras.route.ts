@@ -239,10 +239,17 @@ extrasRouter.post('/factory-reset', async (req, res) => {
     dashboardState.setPairingCode(null);
     dashboardState.setPairedPhone(null);
 
-    // 2. Create safety snapshot first so user never loses unrecoverable data accidentally
+    // 2. Create lightweight safety snapshot of database only (never buffers media into RAM)
     try {
-      await backupService.createBackup({ label: 'pre-factory-reset' });
-      console.log('[Factory Reset] Pre-reset safety snapshot created.');
+      const backupDir = path.resolve('data', 'backups');
+      if (!fs.existsSync(backupDir)) {
+        fs.mkdirSync(backupDir, { recursive: true });
+      }
+      if (fs.existsSync(env.databasePath)) {
+        const snapPath = path.join(backupDir, `safety_pre_reset_${Date.now()}.db`);
+        fs.copyFileSync(env.databasePath, snapPath);
+        console.log('[Factory Reset] Pre-reset DB snapshot created at:', snapPath);
+      }
     } catch (bErr) {
       console.warn('[Factory Reset] Safety snapshot failed, proceeding with purge:', bErr);
     }

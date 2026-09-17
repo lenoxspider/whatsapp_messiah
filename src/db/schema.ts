@@ -211,8 +211,10 @@ export function purgeAllData(): void {
     DELETE FROM captured_statuses;
     DELETE FROM agent_tasks;
     DELETE FROM contacts;
-    VACUUM;
   `);
+  try {
+    db.exec(`PRAGMA wal_checkpoint(TRUNCATE);`);
+  } catch {}
 }
 
 

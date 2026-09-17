@@ -139,10 +139,15 @@ export class BackupService {
       try { fs.unlinkSync(tempDbSnapshotPath); } catch {}
     }
 
-    // Calculate final archive size and sha256 checksum
+    // Calculate final archive size and sha256 checksum safely via stream
     const archiveStat = fs.statSync(archiveFilePath);
-    const fileBuffer = fs.readFileSync(archiveFilePath);
-    const sha256 = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+    const sha256 = await new Promise<string>((resolve) => {
+      const hash = crypto.createHash('sha256');
+      const stream = fs.createReadStream(archiveFilePath);
+      stream.on('data', (chunk) => hash.update(chunk));
+      stream.on('end', () => resolve(hash.digest('hex')));
+      stream.on('error', () => resolve(''));
+    });
 
     manifest.archiveSizeBytes = archiveStat.size;
     manifest.sha256Checksum = sha256;
