@@ -51,7 +51,9 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
     printQRInTerminal: false,
     auth: state,
     generateHighQualityLinkPreview: true,
-    browser: Browsers.ubuntu('Chrome'),
+    browser: Browsers.macOS('Desktop'),
+    syncFullHistory: true,
+    shouldSyncHistoryMessage: () => true,
     // Mark as online immediately on connect so WhatsApp sends active delivery receipts.
     // Without this, sendActiveReceipts stays false → receipts sent as 'inactive' →
     // WhatsApp Business servers skip View-Once delivery to what they see as an offline device.
@@ -147,62 +149,103 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
     }
   });
 
+  // Helper to cleanly extract JID, pure phone number (stripping device suffixes), and name
+  const extractContactInfo = (item: any): { jid: string; phone: string; name: string | null } | null => {
+    if (!item) return null;
+    const rawId = item.jid || item.id || '';
+    if (!rawId || typeof rawId !== 'string') return null;
+
+    // Ignore group chats, newsletters, broadcasts, statuses
+    if (
+      rawId.endsWith('@g.us') ||
+      rawId.endsWith('@newsletter') ||
+      rawId.includes('broadcast') ||
+      rawId === 'status@broadcast'
+    ) {
+      return null;
+    }
+
+    // Strip device suffixes like :1 or :12 before extracting digits
+    // Example: 233541234567:2@s.whatsapp.net -> 233541234567
+    const userPart = rawId.split('@')[0].split(':')[0];
+    const digits = userPart.replace(/[^0-9]/g, '');
+
+    if (digits.length >= 7) {
+      const jid = `${digits}@s.whatsapp.net`;
+      const name = item.name || item.verifiedName || item.notify || null;
+      return { jid, phone: digits, name };
+    }
+
+    // Handle LID if phone number is attached
+    if (rawId.endsWith('@lid') && item.phone) {
+      const phoneDigits = String(item.phone).split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+      if (phoneDigits.length >= 7) {
+        const name = item.name || item.verifiedName || item.notify || null;
+        return { jid: `${phoneDigits}@s.whatsapp.net`, phone: phoneDigits, name };
+      }
+    }
+
+    return null;
+  };
+
   // Contact address book sync loop: Ingest real names and phone numbers saved on phone
-  sock.ev.on('messaging-history.set', ({ contacts, chats }) => {
+  sock.ev.on('messaging-history.set', ({ contacts, chats, syncType, progress }) => {
     let contactCount = 0;
     if (contacts && Array.isArray(contacts)) {
       for (const c of contacts) {
-        const realJid = c.jid || (c.id && c.id.endsWith('@s.whatsapp.net') ? c.id : null);
-        if (!realJid) continue;
-        const phone = realJid.split('@')[0].replace(/[^0-9]/g, '');
-        const savedName = c.name || c.verifiedName || c.notify;
-        if (savedName) {
-          contactRepo.upsertContact(realJid, phone, savedName);
-          contactCount++;
-        }
+        const info = extractContactInfo(c);
+        if (!info) continue;
+        contactRepo.upsertContact(info.jid, info.phone, info.name);
+        contactCount++;
       }
     }
     if (chats && Array.isArray(chats)) {
       for (const ch of chats) {
-        if (ch.id && ch.id.endsWith('@s.whatsapp.net') && (ch as any).name) {
-          const phone = ch.id.split('@')[0].replace(/[^0-9]/g, '');
-          contactRepo.upsertContact(ch.id, phone, (ch as any).name);
-        }
+        const info = extractContactInfo(ch);
+        if (!info) continue;
+        contactRepo.upsertContact(info.jid, info.phone, info.name);
+        contactCount++;
       }
     }
-    console.log(`[AddressBook] Ingested ${contactCount} contacts from phone messaging-history sync.`);
+    const typeLabel = syncType !== undefined ? ` (syncType: ${syncType}, progress: ${progress ?? 'N/A'}%)` : '';
+    console.log(`[AddressBook] Ingested/synced ${contactCount} contacts from phone messaging-history${typeLabel}.`);
   });
 
   sock.ev.on('chats.upsert', (chats) => {
     for (const ch of chats) {
-      if (ch.id && ch.id.endsWith('@s.whatsapp.net') && (ch as any).name) {
-        const phone = ch.id.split('@')[0].replace(/[^0-9]/g, '');
-        contactRepo.upsertContact(ch.id, phone, (ch as any).name);
+      const info = extractContactInfo(ch);
+      if (info) {
+        contactRepo.upsertContact(info.jid, info.phone, info.name);
+      }
+    }
+  });
+
+  sock.ev.on('chats.update', (updates) => {
+    for (const u of updates) {
+      const info = extractContactInfo(u);
+      if (info && info.name) {
+        contactRepo.upsertContact(info.jid, info.phone, info.name);
       }
     }
   });
 
   sock.ev.on('contacts.upsert', (contacts) => {
+    let count = 0;
     for (const c of contacts) {
-      const realJid = c.jid || (c.id && c.id.endsWith('@s.whatsapp.net') ? c.id : null);
-      if (!realJid) continue;
-      const phone = realJid.split('@')[0].replace(/[^0-9]/g, '');
-      const savedName = c.name || c.verifiedName || c.notify;
-      if (savedName) {
-        contactRepo.upsertContact(realJid, phone, savedName);
+      const info = extractContactInfo(c);
+      if (info) {
+        contactRepo.upsertContact(info.jid, info.phone, info.name);
+        count++;
       }
     }
-    console.log(`[AddressBook] Ingested/synced ${contacts.length} contacts from WhatsApp phone address book.`);
+    console.log(`[AddressBook] Ingested/synced ${count} contacts from WhatsApp phone address book.`);
   });
 
   sock.ev.on('contacts.update', (updates) => {
     for (const u of updates) {
-      const realJid = u.jid || (u.id && u.id.endsWith('@s.whatsapp.net') ? u.id : null);
-      if (!realJid) continue;
-      const savedName = u.name || u.verifiedName || u.notify;
-      if (savedName) {
-        const phone = realJid.split('@')[0].replace(/[^0-9]/g, '');
-        contactRepo.upsertContact(realJid, phone, savedName);
+      const info = extractContactInfo(u);
+      if (info) {
+        contactRepo.upsertContact(info.jid, info.phone, info.name);
       }
     }
   });
