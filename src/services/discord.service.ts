@@ -223,6 +223,28 @@ export class DiscordService {
     });
   }
 
+  async sendSocketStateAlert(oldState: string, newState: string, reason?: string): Promise<void> {
+    const isConnected = newState === 'connected';
+    const isDisconnected = newState === 'disconnected';
+
+    await this.sendWebhook({
+      username: 'Messiah Sentinel (Connection Monitor)',
+      avatar_url: 'https://cdn-icons-png.flaticon.com/512/3616/3616223.png',
+      embeds: [
+        {
+          title: isConnected ? '🟢 WhatsApp Socket Connected' : (isDisconnected ? '🔴 WhatsApp Socket Disconnected' : '🟡 WhatsApp Socket State Update'),
+          color: isConnected ? 0x22c55e : (isDisconnected ? 0xef4444 : 0xeab308),
+          fields: [
+            { name: 'Previous State', value: oldState.toUpperCase(), inline: true },
+            { name: 'New State', value: newState.toUpperCase(), inline: true },
+            ...(reason ? [{ name: 'Reason / Details', value: reason, inline: false }] : [])
+          ],
+          timestamp: new Date().toISOString()
+        }
+      ]
+    });
+  }
+
   async sendStatusStealAlert(details: {
     contactPhone: string;
     contactName?: string | null;

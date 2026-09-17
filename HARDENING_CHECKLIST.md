@@ -69,18 +69,18 @@
 
 ## ✂️ FEATURES TO CUT / SIMPLIFY
 
-- [ ] **Remove Outward Status Trigger**: Delete trigger word parsing and status delete commands.
-- [ ] **Streamline Telemetry Duplication**: Clean up redundant forwarding routes where Discord and WhatsApp duplicate unnecessary logs.
-- [ ] **Deprecate Unused Commands**: Evaluate low-value commands (e.g. `!dormant`) for removal to minimize code surface area.
+- [x] **Remove Outward Status Trigger**: Delete trigger word parsing and status delete commands.
+- [x] **Streamline Telemetry Duplication**: Clean up redundant forwarding routes where Discord and WhatsApp duplicate unnecessary logs.
+- [x] **Deprecate Unused Commands**: Evaluate low-value commands (e.g. `!dormant`) for removal to minimize code surface area.
 
 ---
 
 ## 📊 SYSTEM OBSERVABILITY & HEALTH METRICS
 
-- [ ] **Health Status Endpoint**: Expose `/api/health` providing live metrics:
+- [x] **Health Status Endpoint**: Expose `/api/health` providing live metrics:
   - Socket state & uptime.
   - Timestamp of last received message.
   - Reminder queue breakdown (`pending`, `claimed`, `sent`, `failed`).
   - Disk space & SQLite DB byte size.
   - OpenAI API error rates.
-- [ ] **Discord Health Alerting**: Dispatch webhook alerts on socket state changes or system failures.
+- [x] **Discord Health Alerting**: Dispatch webhook alerts on socket state changes or system failures.

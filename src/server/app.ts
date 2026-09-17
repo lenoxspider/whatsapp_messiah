@@ -12,6 +12,7 @@ import { llmRouter } from './routes/llm.route.js';
 import { extrasRouter } from './routes/extras.route.js';
 import { opsRouter } from './routes/ops.route.js';
 import { tasksRouter } from './routes/tasks.route.js';
+import { healthRouter } from './routes/health.route.js';
 import { authMiddleware } from './middleware/auth.middleware.js';
 
 export function createDashboardServer(): express.Express {
@@ -21,8 +22,9 @@ export function createDashboardServer(): express.Express {
 
   const publicDir = path.resolve('public');
 
-  // Mount Public authentication endpoints and assets
+  // Mount Public authentication and health endpoints
   app.use('/api/auth', authRouter);
+  app.use('/api/health', healthRouter);
 
   // Serve static assets for login
   app.use('/css', express.static(path.join(publicDir, 'css')));
