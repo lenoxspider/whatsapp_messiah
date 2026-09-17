@@ -28,14 +28,11 @@ export function isStatusStealerTrigger(inputText: string, configuredTrigger: str
 
 export function extractMessageText(message: any): string {
   if (!message) return '';
-  const m =
-    message.ephemeralMessage?.message ||
-    message.viewOnceMessage?.message ||
-    message.viewOnceMessageV2?.message ||
-    message.documentWithCaptionMessage?.message ||
-    message;
+  const { innerMessage, caption } = mediaExtractor.unwrapMessage({ message } as any);
+  const m = innerMessage || message;
 
   return (
+    caption ||
     m.conversation ||
     m.extendedTextMessage?.text ||
     m.imageMessage?.caption ||
