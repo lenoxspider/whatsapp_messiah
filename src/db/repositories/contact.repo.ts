@@ -114,6 +114,21 @@ export class ContactRepository {
     `);
     return stmt.all(limit) as unknown as ContactRecord[];
   }
+
+  listContacts(limit: number = 50, tier?: number): ContactRecord[] {
+    if (tier) {
+      const stmt = this.db.prepare(`SELECT * FROM contacts WHERE tier = ? ORDER BY last_interaction DESC LIMIT ?`);
+      return stmt.all(tier, limit) as unknown as ContactRecord[];
+    }
+    const stmt = this.db.prepare(`SELECT * FROM contacts ORDER BY last_interaction DESC LIMIT ?`);
+    return stmt.all(limit) as unknown as ContactRecord[];
+  }
+
+  getContactCount(): number {
+    const stmt = this.db.prepare(`SELECT COUNT(*) as count FROM contacts`);
+    const row = stmt.get() as { count: number };
+    return row?.count || 0;
+  }
 }
 
 export const contactRepo = new ContactRepository();

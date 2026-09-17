@@ -107,6 +107,24 @@ export const askCommand: CommandHandler = {
           };
         }
 
+        case 'list_contacts': {
+          const limit = Math.min(Number(args.limit) || 20, 50);
+          const tier = args.tier ? Number(args.tier) : undefined;
+          const totalCount = contactRepo.getContactCount();
+          const contacts = contactRepo.listContacts(limit, tier);
+          return {
+            total_synced_contacts: totalCount,
+            returned_count: contacts.length,
+            contacts: contacts.map(c => ({
+              name: c.name || `+${c.phone}`,
+              phone: `+${c.phone}`,
+              tier: c.tier,
+              autopilot_enabled: c.autopilot_enabled === 1,
+              last_interaction: c.last_interaction ? new Date(c.last_interaction).toISOString() : null
+            }))
+          };
+        }
+
         case 'set_tier': {
           const phone = String(args.phone || '').trim();
           const tier = Number(args.tier);

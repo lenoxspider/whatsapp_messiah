@@ -77,6 +77,20 @@ export const AGENT_TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
   {
     type: 'function',
     function: {
+      name: 'list_contacts',
+      description: 'List synced contacts and check total count of contacts saved in SQLite database.',
+      parameters: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', description: 'Maximum contacts to return (default 20)' },
+          tier: { type: 'number', description: 'Optional relationship tier to filter by (1 to 5)' }
+        }
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
       name: 'set_tier',
       description: 'Update the relationship tier for a contact (1=VIP, 2=Colleague, 3=Acquaintance, 4=Stranger, 5=Ghost/Muted).',
       parameters: {

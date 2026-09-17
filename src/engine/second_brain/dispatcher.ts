@@ -16,6 +16,7 @@ import { backupCommand } from './commands/backup.command.js';
 import { autopilotCommand } from './commands/autopilot.command.js';
 import { taskCommand } from './commands/task.command.js';
 import { nameCommand } from './commands/name.command.js';
+import { contactsCommand } from './commands/contacts.command.js';
 
 export class SecondBrainDispatcher {
   private commands = new Map<string, CommandHandler>();
@@ -33,11 +34,13 @@ export class SecondBrainDispatcher {
     this.register(autopilotCommand);
     this.register(taskCommand);
     this.register(nameCommand);
+    this.register(contactsCommand);
 
     // Aliases
     this.commands.set('auto', autopilotCommand);
     this.commands.set('tasks', taskCommand);
     this.commands.set('rename', nameCommand);
+    this.commands.set('people', contactsCommand);
   }
 
   private register(command: CommandHandler): void {
