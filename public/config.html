@@ -114,10 +114,13 @@
                 <div style="font-weight: 600; font-size: 0.84rem; color: var(--accent-green);">Autonomous Ghost Mode (Talks as You)</div>
                 <div style="font-size: 0.76rem; color: var(--text-muted);">Active conversational reply engine with contact memory &amp; sleep cycle</div>
               </div>
-              <label style="position: relative; display: inline-block; width: 44px; height: 24px; cursor: pointer;">
-                <input type="checkbox" id="autonomous-ghost-toggle" style="opacity: 0; width: 0; height: 0;" />
-                <span style="position: absolute; inset: 0; background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 24px; transition: 0.2s;"></span>
-              </label>
+              <div style="display: flex; align-items: center; gap: 0.6rem;">
+                <span id="badge-autonomous-ghost" class="delta-badge" style="font-size: 0.7rem; min-width: 32px; text-align: center;">OFF</span>
+                <label class="ops-switch" title="Toggle Autonomous Ghost Mode">
+                  <input type="checkbox" id="autonomous-ghost-toggle" />
+                  <span class="ops-slider"></span>
+                </label>
+              </div>
             </div>
 
             <!-- Ghost Presence -->
@@ -126,10 +129,13 @@
                 <div style="font-weight: 600; font-size: 0.84rem; color: var(--text-main);">Ghost Presence Simulation</div>
                 <div style="font-size: 0.76rem; color: var(--text-muted);">Typing speed emulation &amp; selective deafness grey-ticks</div>
               </div>
-              <label style="position: relative; display: inline-block; width: 44px; height: 24px; cursor: pointer;">
-                <input type="checkbox" id="ghost-handler-toggle" style="opacity: 0; width: 0; height: 0;" checked />
-                <span style="position: absolute; inset: 0; background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 24px; transition: 0.2s;"></span>
-              </label>
+              <div style="display: flex; align-items: center; gap: 0.6rem;">
+                <span id="badge-ghost-handler" class="delta-badge" style="font-size: 0.7rem; min-width: 32px; text-align: center;">ON</span>
+                <label class="ops-switch" title="Toggle Ghost Presence Simulation">
+                  <input type="checkbox" id="ghost-handler-toggle" checked />
+                  <span class="ops-slider"></span>
+                </label>
+              </div>
             </div>
 
             <!-- Anti-Revoke Retention Readout -->

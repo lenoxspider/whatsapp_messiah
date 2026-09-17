@@ -66,6 +66,30 @@ export function initConfigPage() {
     }
   }
 
+  function updateSwitchBadge(checkbox, badgeId) {
+    const badge = document.getElementById(badgeId);
+    if (!badge || !checkbox) return;
+    if (checkbox.checked) {
+      badge.textContent = 'ON';
+      badge.style.color = 'var(--accent-green)';
+      badge.style.background = 'rgba(29, 158, 117, 0.15)';
+      badge.style.border = '1px solid rgba(29, 158, 117, 0.3)';
+    } else {
+      badge.textContent = 'OFF';
+      badge.style.color = 'var(--text-dim)';
+      badge.style.background = 'var(--bg-hover)';
+      badge.style.border = '1px solid var(--border-subtle)';
+    }
+  }
+
+  autonomousToggle?.addEventListener('change', () => {
+    updateSwitchBadge(autonomousToggle, 'badge-autonomous-ghost');
+  });
+
+  ghostToggle?.addEventListener('change', () => {
+    updateSwitchBadge(ghostToggle, 'badge-ghost-handler');
+  });
+
   // Load Current Configuration
   async function loadConfig() {
     try {
@@ -90,8 +114,14 @@ export function initConfigPage() {
       }
 
       if (openaiModelSelect && cfg.openaiModel) openaiModelSelect.value = cfg.openaiModel;
-      if (autonomousToggle) autonomousToggle.checked = Boolean(cfg.autonomousGhost);
-      if (ghostToggle) ghostToggle.checked = Boolean(cfg.ghostHandlerEnabled);
+      if (autonomousToggle) {
+        autonomousToggle.checked = Boolean(cfg.autonomousGhost);
+        updateSwitchBadge(autonomousToggle, 'badge-autonomous-ghost');
+      }
+      if (ghostToggle) {
+        ghostToggle.checked = Boolean(cfg.ghostHandlerEnabled);
+        updateSwitchBadge(ghostToggle, 'badge-ghost-handler');
+      }
       if (typingSpeedInput && cfg.typingSpeedMs) typingSpeedInput.value = cfg.typingSpeedMs;
       if (maxDelayInput && cfg.maxTypingDelayMs) maxDelayInput.value = cfg.maxTypingDelayMs;
 
