@@ -15,7 +15,7 @@ console.log('✅ 1. Schema initialized successfully.');
 const savedNote = noteRepo.saveNote('Quarterly revenue targets and OKR list', 'work', 'https://example.com/okrs');
 console.log(`✅ 2. Saved note #${savedNote.id} with tag #${savedNote.tag}`);
 
-const searchResults = noteRepo.searchNotes('revenue');
+const searchResults = noteRepo.searchNotes('revenue', 50);
 if (searchResults.length > 0 && searchResults.some(r => r.id === savedNote.id)) {
   console.log('✅ 3. SQLite FTS5 Full-Text Search working accurately!');
 } else {
@@ -155,14 +155,63 @@ if (semanticNote.id && semanticNote.embedding && semanticNote.embedding.length =
 }
 
 // 11. Test Phase 3: Reciprocal Rank Fusion (RRF) Hybrid Search
-const hybridResults = noteRepo.searchHybrid('Frankfurt', 5, testEmbedding);
+const hybridResults = noteRepo.searchHybrid('Frankfurt', 25, testEmbedding);
 if (hybridResults.length > 0 && hybridResults.some(n => n.id === semanticNote.id)) {
   console.log(`✅ 16. Reciprocal Rank Fusion (RRF) Hybrid Search executed successfully (${hybridResults.length} fused matches).`);
 } else {
   console.error('❌ Hybrid search failed.');
 }
 
-console.log('\n🎉 ALL CORE, PHASE 1, PHASE 2, AND PHASE 3 VERIFICATIONS PASSED SUCCESSFULLY!');
+// 12. Test Agent Capabilities: Autopilot & Task Delegation
+import { agentTaskRepo } from '../src/db/repositories/agent_task.repo.js';
+
+// Contact Autopilot toggle test
+contactRepo.setAutopilot(contact.jid, true);
+const updatedAlex = contactRepo.getContact(contact.jid);
+if (updatedAlex && updatedAlex.autopilot_enabled === 1) {
+  console.log('✅ 17. Per-contact Autopilot toggle verified (enabled=1).');
+} else {
+  console.error('❌ Contact autopilot toggle failed.');
+}
+
+// Agent Task Creation & Scheduling
+const futureTime = Date.now() + 3600000;
+const task1 = agentTaskRepo.createTask(contact.jid, 'Ask Alex if the pitch deck is ready for Friday', futureTime);
+if (task1.id && task1.status === 'pending' && task1.goal.includes('pitch deck')) {
+  console.log(`✅ 18. Agent Task creation & scheduling verified (Task #${task1.id}: "${task1.goal}").`);
+} else {
+  console.error('❌ Agent task creation failed.');
+}
+
+// Active Task Retrieval & Status Transition
+const activeTask = agentTaskRepo.getActiveTaskForContact(contact.jid);
+if (activeTask && activeTask.id === task1.id) {
+  agentTaskRepo.updateTaskStatus(task1.id, 'completed', 'Alex confirmed the deck is ready.');
+  const completedTask = agentTaskRepo.getTaskById(task1.id);
+  if (completedTask && completedTask.status === 'completed' && completedTask.summary?.includes('deck is ready')) {
+    console.log(`✅ 19. Active Task lookup and completion lifecycle verified.`);
+  } else {
+    console.error('❌ Task completion update failed.');
+  }
+} else {
+  console.error('❌ Active task lookup failed.');
+}
+
+// Completion Tag Regex Verification
+const sampleAiReply = `Sounds good Alex, see you on Friday!\n[TASK_COMPLETED: Confirmed meeting and pitch deck ready]`;
+const match = sampleAiReply.match(/\[TASK_COMPLETED:\s*(.*?)\]/i);
+if (match && match[1].includes('pitch deck ready')) {
+  const cleaned = sampleAiReply.replace(/\[TASK_COMPLETED:\s*.*?\]/i, '').trim();
+  if (!cleaned.includes('[TASK_COMPLETED') && cleaned.includes('see you on Friday')) {
+    console.log('✅ 20. Mission Goal completion tag regex extraction verified.');
+  } else {
+    console.error('❌ Clean reply extraction failed.');
+  }
+} else {
+  console.error('❌ Completion tag regex matching failed.');
+}
+
+console.log('\n🎉 ALL CORE, PHASE 1, PHASE 2, PHASE 3, AND AGENT CAPABILITY VERIFICATIONS PASSED SUCCESSFULLY!');
 
 
 

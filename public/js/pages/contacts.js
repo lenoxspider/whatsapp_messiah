@@ -15,14 +15,16 @@ export function initContactsPage() {
   const tabBtnTiers = document.getElementById('tab-btn-tiers');
   const tabBtnRevoked = document.getElementById('tab-btn-revoked');
   const tabBtnDormant = document.getElementById('tab-btn-dormant');
+  const tabBtnTasks = document.getElementById('tab-btn-tasks');
   const viewDirectory = document.getElementById('view-directory');
   const viewTierBoard = document.getElementById('view-tier-board');
   const viewRevokedInbox = document.getElementById('view-revoked-inbox');
   const viewDormant = document.getElementById('view-dormant');
+  const viewTasks = document.getElementById('view-tasks');
 
   function switchTab(tab) {
     currentSubTab = tab;
-    [tabBtnDirectory, tabBtnTiers, tabBtnRevoked, tabBtnDormant].forEach(b => {
+    [tabBtnDirectory, tabBtnTiers, tabBtnRevoked, tabBtnDormant, tabBtnTasks].forEach(b => {
       if (b) {
         b.style.background = 'transparent';
         b.style.color = 'var(--text-muted)';
@@ -33,6 +35,7 @@ export function initContactsPage() {
     if (viewTierBoard) viewTierBoard.style.display = tab === 'tiers' ? 'block' : 'none';
     if (viewRevokedInbox) viewRevokedInbox.style.display = tab === 'revoked' ? 'block' : 'none';
     if (viewDormant) viewDormant.style.display = tab === 'dormant' ? 'block' : 'none';
+    if (viewTasks) viewTasks.style.display = tab === 'tasks' ? 'block' : 'none';
 
     if (tab === 'directory') {
       if (tabBtnDirectory) {
@@ -58,6 +61,12 @@ export function initContactsPage() {
         tabBtnDormant.style.color = '#38bdf8';
       }
       loadDormantThreads();
+    } else if (tab === 'tasks') {
+      if (tabBtnTasks) {
+        tabBtnTasks.style.background = 'var(--bg-elevated)';
+        tabBtnTasks.style.color = '#6366f1';
+      }
+      loadAgentTasks();
     }
   }
 
@@ -65,6 +74,14 @@ export function initContactsPage() {
   tabBtnTiers?.addEventListener('click', () => switchTab('tiers'));
   tabBtnRevoked?.addEventListener('click', () => switchTab('revoked'));
   tabBtnDormant?.addEventListener('click', () => switchTab('dormant'));
+  tabBtnTasks?.addEventListener('click', () => switchTab('tasks'));
+
+  document.getElementById('btn-refresh-tasks')?.addEventListener('click', () => loadAgentTasks());
+  document.getElementById('task-filter-status')?.addEventListener('change', () => loadAgentTasks());
+  document.getElementById('btn-create-task-modal')?.addEventListener('click', () => openCreateTaskModal());
+  document.getElementById('btn-close-task-modal')?.addEventListener('click', () => closeCreateTaskModal());
+  document.getElementById('btn-cancel-task-modal')?.addEventListener('click', () => closeCreateTaskModal());
+  document.getElementById('form-create-task')?.addEventListener('submit', handleCreateTaskSubmit);
 
   document.getElementById('btn-refresh-dormant')?.addEventListener('click', () => loadDormantThreads());
   document.getElementById('dormant-days-select')?.addEventListener('change', () => loadDormantThreads());
@@ -318,6 +335,33 @@ function renderDossier(data) {
         </div>
       </div>
 
+      <!-- Autopilot & Task Delegation Quick Controls -->
+      <div style="border-top: 1px solid var(--border-subtle); padding-top: 0.75rem; margin-top: 0.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+        <div>
+          <div style="font-size: 0.78rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 0.35rem;">
+            <span>🤖</span> WhatsApp Agent Autopilot
+          </div>
+          <div style="font-size: 0.7rem; color: var(--text-dim);">
+            ${contact.autopilot_enabled ? 'Agent autonomously replies in character' : 'Autopilot passive (inherits global tier setting)'}
+          </div>
+        </div>
+        <div style="display: flex; gap: 0.4rem; align-items: center;">
+          <button type="button" id="btn-toggle-contact-autopilot" class="btn" style="
+            background: ${contact.autopilot_enabled ? '#10b981' : 'var(--bg-surface)'};
+            color: ${contact.autopilot_enabled ? '#fff' : 'var(--text-muted)'};
+            border: 1px solid ${contact.autopilot_enabled ? '#10b981' : 'var(--border-subtle)'};
+            padding: 0.3rem 0.65rem; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 600; cursor: pointer;
+          ">
+            ${contact.autopilot_enabled ? '✅ Autopilot ON' : '⏸️ Autopilot OFF'}
+          </button>
+          <button type="button" id="btn-assign-contact-task" class="btn" style="
+            background: #6366f1; color: #fff; border: none; padding: 0.3rem 0.65rem; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 600; cursor: pointer;
+          ">
+            + Assign Goal
+          </button>
+        </div>
+      </div>
+
       <!-- Quick Metrics Strip -->
       <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; margin-top: 0.85rem;">
         <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); padding: 0.5rem; border-radius: var(--radius-sm); text-align: center;">
@@ -513,6 +557,29 @@ function renderDossier(data) {
     } finally {
       btnSavePersona.disabled = false;
     }
+  });
+
+  // Bind Autopilot Toggle
+  const btnToggleAutopilot = document.getElementById('btn-toggle-contact-autopilot');
+  btnToggleAutopilot?.addEventListener('click', async () => {
+    try {
+      const newState = !contact.autopilot_enabled;
+      await apiRequest(`/api/contacts/${encodeURIComponent(contact.jid)}/autopilot`, {
+        method: 'POST',
+        body: { enabled: newState }
+      });
+      contact.autopilot_enabled = newState ? 1 : 0;
+      showToast(`Autopilot ${newState ? 'enabled' : 'disabled'} for ${name}`);
+      renderDossier(data);
+      loadContacts();
+    } catch (err) {
+      showToast(`Error toggling autopilot: ${err.message}`, 'error');
+    }
+  });
+
+  // Bind Assign Goal
+  document.getElementById('btn-assign-contact-task')?.addEventListener('click', () => {
+    openCreateTaskModal(contact.jid);
   });
 
   // Load AI Executive Dossier asynchronously
@@ -1089,6 +1156,229 @@ async function loadDormantThreads() {
         </div>
       `;
     }
+  }
+}
+
+// ------------------------------------------------------------------------------
+// VIEW 4: Agent Task Delegations
+// ------------------------------------------------------------------------------
+async function loadAgentTasks() {
+  const container = document.getElementById('tasks-grid-container');
+  const countBadge = document.getElementById('tab-tasks-count');
+  const filter = document.getElementById('task-filter-status')?.value || 'all';
+
+  if (container) {
+    container.innerHTML = `
+      <div style="color: var(--text-dim); font-size: 0.82rem; padding: 3rem; text-align: center; grid-column: 1 / -1;">
+        Loading agent tasks...
+      </div>
+    `;
+  }
+
+  try {
+    const data = await apiRequest(`/api/tasks?status=${encodeURIComponent(filter)}`);
+    const tasks = data.tasks || [];
+
+    if (countBadge) {
+      const pendingOrActive = tasks.filter(t => t.status === 'pending' || t.status === 'in_progress').length;
+      countBadge.textContent = pendingOrActive;
+    }
+
+    if (!container) return;
+
+    if (tasks.length === 0) {
+      container.innerHTML = `
+        <div style="background: var(--bg-surface); border: 1px dashed var(--border-subtle); border-radius: var(--radius-md); padding: 3rem; text-align: center; grid-column: 1 / -1;">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">🤖</div>
+          <div style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.3rem;">No Agent Tasks Found</div>
+          <div style="font-size: 0.78rem; color: var(--text-dim); max-width: 380px; margin: 0 auto 1rem;">
+            Assign a goal to the WhatsApp Agent to have it reach out to contacts, steer conversations, and gather intel.
+          </div>
+          <button type="button" class="btn" id="btn-empty-create-task" style="background: #6366f1; color: #fff; border: none; padding: 0.4rem 1rem; border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 600; cursor: pointer;">
+            + Assign First Goal
+          </button>
+        </div>
+      `;
+      document.getElementById('btn-empty-create-task')?.addEventListener('click', () => openCreateTaskModal());
+      return;
+    }
+
+    container.innerHTML = tasks.map(t => {
+      const contactLabel = t.contact_name || `+${t.contact_phone || t.contact_jid.split('@')[0]}`;
+      const statusBadge = t.status === 'completed'
+        ? '<span class="delta-badge" style="color: #10b981; border: 1px solid #10b981; background: rgba(16, 185, 129, 0.1);">✅ COMPLETED</span>'
+        : t.status === 'in_progress'
+        ? '<span class="delta-badge" style="color: #38bdf8; border: 1px solid #38bdf8; background: rgba(56, 189, 248, 0.1);">🔄 IN PROGRESS</span>'
+        : t.status === 'pending'
+        ? '<span class="delta-badge" style="color: #f59e0b; border: 1px solid #f59e0b; background: rgba(245, 158, 11, 0.1);">⏳ PENDING</span>'
+        : '<span class="delta-badge" style="color: var(--accent-coral); border: 1px solid var(--accent-coral); background: rgba(226, 75, 75, 0.1);">❌ CANCELLED</span>';
+
+      const schedDate = new Date(t.scheduled_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+      return `
+        <div class="card" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1rem; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.5rem;">
+              <div>
+                <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main);">
+                  ${escapeHtml(contactLabel)}
+                </div>
+                <div style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim);">
+                  📱 +${escapeHtml(t.contact_phone || t.contact_jid.split('@')[0])}
+                </div>
+              </div>
+              ${statusBadge}
+            </div>
+
+            <div style="background: var(--bg-elevated); border-radius: var(--radius-sm); padding: 0.65rem 0.75rem; margin: 0.6rem 0; border: 1px solid var(--border-subtle);">
+              <div style="font-size: 0.7rem; color: #6366f1; font-weight: 600; text-transform: uppercase; font-family: var(--font-mono); margin-bottom: 0.2rem;">
+                🎯 Assigned Goal
+              </div>
+              <div style="font-size: 0.82rem; color: var(--text-main); line-height: 1.4;">
+                "${escapeHtml(t.goal)}"
+              </div>
+            </div>
+
+            ${t.summary ? `
+              <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-sm); padding: 0.55rem 0.75rem; margin-bottom: 0.6rem;">
+                <div style="font-size: 0.68rem; color: #10b981; font-weight: 600; text-transform: uppercase; font-family: var(--font-mono); margin-bottom: 0.15rem;">
+                  📝 Outcome / Gathered Intel
+                </div>
+                <div style="font-size: 0.78rem; color: var(--text-main);">
+                  ${escapeHtml(t.summary)}
+                </div>
+              </div>
+            ` : ''}
+
+            <div style="font-size: 0.72rem; color: var(--text-dim); font-family: var(--font-mono);">
+              ⏰ Scheduled: ${schedDate}
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 0.4rem; justify-content: flex-end; margin-top: 0.85rem; border-top: 1px solid var(--border-subtle); padding-top: 0.65rem;">
+            ${t.status !== 'completed' && t.status !== 'cancelled' ? `
+              <button type="button" class="btn btn-task-complete" data-id="${t.id}" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.72rem; padding: 0.25rem 0.55rem; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;">
+                ✓ Complete
+              </button>
+              <button type="button" class="btn btn-task-cancel" data-id="${t.id}" style="background: var(--bg-elevated); color: var(--text-dim); border: 1px solid var(--border-subtle); font-size: 0.72rem; padding: 0.25rem 0.55rem; border-radius: var(--radius-sm); cursor: pointer;">
+                Cancel
+              </button>
+            ` : ''}
+            <button type="button" class="btn btn-task-delete" data-id="${t.id}" style="background: transparent; color: var(--accent-coral); border: none; font-size: 0.72rem; padding: 0.25rem 0.45rem; cursor: pointer;">
+              🗑️
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Attach listeners
+    container.querySelectorAll('.btn-task-complete').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        const summary = prompt('Enter task outcome summary (optional):') || 'Completed manually';
+        try {
+          await apiRequest(`/api/tasks/${id}/complete`, { method: 'POST', body: { summary } });
+          showToast('Task marked completed!', 'success');
+          loadAgentTasks();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    });
+
+    container.querySelectorAll('.btn-task-cancel').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        try {
+          await apiRequest(`/api/tasks/${id}/cancel`, { method: 'POST' });
+          showToast('Task cancelled', 'info');
+          loadAgentTasks();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    });
+
+    container.querySelectorAll('.btn-task-delete').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        if (!confirm('Delete this task?')) return;
+        try {
+          await apiRequest(`/api/tasks/${id}`, { method: 'DELETE' });
+          showToast('Task deleted', 'info');
+          loadAgentTasks();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    });
+
+  } catch (err) {
+    if (container) {
+      container.innerHTML = `
+        <div style="color: var(--accent-coral); font-size: 0.82rem; padding: 2rem; text-align: center; grid-column: 1 / -1;">
+          Failed to load agent tasks: ${escapeHtml(err.message)}
+        </div>
+      `;
+    }
+  }
+}
+
+function openCreateTaskModal(preselectedJid = null) {
+  const modal = document.getElementById('create-task-modal');
+  const select = document.getElementById('task-contact-select');
+  if (!modal || !select) return;
+
+  select.innerHTML = '<option value="">Select a contact...</option>' + contactsList.map(c => {
+    const label = c.name ? `${c.name} (+${c.phone})` : `+${c.phone}`;
+    const selected = preselectedJid === c.jid ? 'selected' : '';
+    return `<option value="${escapeHtml(c.jid)}" ${selected}>${escapeHtml(label)}</option>`;
+  }).join('');
+
+  modal.style.display = 'flex';
+}
+
+function closeCreateTaskModal() {
+  const modal = document.getElementById('create-task-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function handleCreateTaskSubmit(e) {
+  e.preventDefault();
+  const contactJid = document.getElementById('task-contact-select')?.value;
+  const goal = document.getElementById('task-goal-input')?.value.trim();
+  const timing = document.getElementById('task-timing-select')?.value;
+
+  if (!contactJid || !goal) {
+    showToast('Please select a contact and enter a goal', 'error');
+    return;
+  }
+
+  let scheduledAt = Date.now();
+  if (timing === '15m') scheduledAt += 15 * 60 * 1000;
+  else if (timing === '1h') scheduledAt += 60 * 60 * 1000;
+  else if (timing === '3h') scheduledAt += 3 * 60 * 60 * 1000;
+  else if (timing === 'tomorrow') {
+    const tmrw = new Date();
+    tmrw.setDate(tmrw.getDate() + 1);
+    tmrw.setHours(9, 0, 0, 0);
+    scheduledAt = tmrw.getTime();
+  }
+
+  try {
+    await apiRequest('/api/tasks', {
+      method: 'POST',
+      body: { contactJid, goal, scheduledAt }
+    });
+    showToast('Agent task successfully deployed!', 'success');
+    closeCreateTaskModal();
+    const goalInput = document.getElementById('task-goal-input');
+    if (goalInput) goalInput.value = '';
+    const tabBtnTasks = document.getElementById('tab-btn-tasks');
+    tabBtnTasks?.click();
+  } catch (err) {
+    showToast(`Failed to deploy task: ${err.message}`, 'error');
   }
 }
 

@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import type { WASocket } from '@whiskeysockets/baileys';
 import { reminderRepo } from '../db/repositories/reminder.repo.js';
+import { agentTaskRunner } from './agent_task_runner.service.js';
 import { env } from '../config/env.js';
 import { discordService } from './discord.service.js';
 import { backupService } from './backup.service.js';
@@ -17,9 +18,13 @@ class SchedulerService {
     if (this.isRunning) return;
     this.isRunning = true;
 
-    // Check for due reminders every 60 seconds
-    cron.schedule('* * * * *', async () => {
+    // Check for due reminders and due agent tasks every 30 seconds
+    cron.schedule('*/30 * * * * *', async () => {
       await this.checkDueReminders();
+      const sock = this.socketProvider ? this.socketProvider() : null;
+      if (sock) {
+        await agentTaskRunner.processDueTasks(sock);
+      }
     });
 
     // Automated Nightly Disaster Recovery Backup at 03:00 AM

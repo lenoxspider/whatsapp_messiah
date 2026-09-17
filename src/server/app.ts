@@ -11,6 +11,7 @@ import { mediaRouter } from './routes/media.route.js';
 import { llmRouter } from './routes/llm.route.js';
 import { extrasRouter } from './routes/extras.route.js';
 import { opsRouter } from './routes/ops.route.js';
+import { tasksRouter } from './routes/tasks.route.js';
 import { authMiddleware } from './middleware/auth.middleware.js';
 
 export function createDashboardServer(): express.Express {
@@ -47,6 +48,7 @@ export function createDashboardServer(): express.Express {
   app.use('/api/llm', llmRouter);
   app.use('/api/extras', extrasRouter);
   app.use('/api/ops', opsRouter);
+  app.use('/api/tasks', tasksRouter);
 
   return app;
 }

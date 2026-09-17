@@ -13,6 +13,8 @@ import { whoCommand } from './commands/who.command.js';
 import { dossierCommand } from './commands/dossier.command.js';
 import { dormantCommand } from './commands/dormant.command.js';
 import { backupCommand } from './commands/backup.command.js';
+import { autopilotCommand } from './commands/autopilot.command.js';
+import { taskCommand } from './commands/task.command.js';
 
 export class SecondBrainDispatcher {
   private commands = new Map<string, CommandHandler>();
@@ -27,6 +29,12 @@ export class SecondBrainDispatcher {
     this.register(dossierCommand);
     this.register(dormantCommand);
     this.register(backupCommand);
+    this.register(autopilotCommand);
+    this.register(taskCommand);
+
+    // Aliases
+    this.commands.set('auto', autopilotCommand);
+    this.commands.set('tasks', taskCommand);
   }
 
   private register(command: CommandHandler): void {

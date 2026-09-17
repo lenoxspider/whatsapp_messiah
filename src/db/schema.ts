@@ -149,6 +149,21 @@ export function initializeDatabaseSchema(): void {
     );
 
     CREATE INDEX IF NOT EXISTS idx_contact_dossiers_expires ON contact_dossiers(expires_at);
+
+    CREATE TABLE IF NOT EXISTS agent_tasks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      contact_jid TEXT NOT NULL,
+      goal TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      scheduled_at INTEGER NOT NULL,
+      recurrence TEXT,
+      summary TEXT,
+      last_action_at INTEGER,
+      created_at INTEGER NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_agent_tasks_contact ON agent_tasks(contact_jid, status);
+    CREATE INDEX IF NOT EXISTS idx_agent_tasks_scheduled ON agent_tasks(scheduled_at, status);
   `);
 
   // Safe migration for existing SQLite database
@@ -173,6 +188,12 @@ export function initializeDatabaseSchema(): void {
   if (!noteColNames.has('embedding')) {
     db.exec(`ALTER TABLE notes ADD COLUMN embedding BLOB;`);
   }
+
+  const contactCols = db.prepare(`PRAGMA table_info(contacts)`).all() as Array<{ name: string }>;
+  const contactColNames = new Set(contactCols.map(c => c.name));
+  if (!contactColNames.has('autopilot_enabled')) {
+    db.exec(`ALTER TABLE contacts ADD COLUMN autopilot_enabled INTEGER NOT NULL DEFAULT 0;`);
+  }
 }
 
 export function purgeAllData(): void {
@@ -188,6 +209,7 @@ export function purgeAllData(): void {
     DELETE FROM message_edits;
     DELETE FROM contact_dossiers;
     DELETE FROM captured_statuses;
+    DELETE FROM agent_tasks;
     DELETE FROM contacts;
     VACUUM;
   `);

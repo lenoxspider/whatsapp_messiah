@@ -13,6 +13,7 @@ export interface ContactRecord {
   tier: ContactTier;
   custom_persona: string | null;
   facts_json: string | null; // Key-value or list of known facts
+  autopilot_enabled?: number; // 1 = autopilot ON, 0 = OFF (uses tier default)
   last_interaction: number | null;
   created_at: number;
 }

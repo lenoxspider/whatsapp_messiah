@@ -137,6 +137,14 @@ contactsRouter.put('/:jid/persona', (req, res) => {
   res.json({ success: true, jid });
 });
 
+contactsRouter.post('/:jid/autopilot', (req, res) => {
+  const jid = decodeURIComponent(req.params.jid);
+  const { enabled } = req.body;
+
+  contactRepo.setAutopilot(jid, Boolean(enabled));
+  res.json({ success: true, jid, autopilot_enabled: enabled ? 1 : 0 });
+});
+
 contactsRouter.get('/revoked', (req, res) => {
   const db = getDatabase();
   const rows = db.prepare(`

@@ -332,6 +332,52 @@ export class DiscordService {
       content: `⚠️ **Daemon Status Update:** ${statusText}`
     });
   }
+
+  async sendAgentTaskAlert(details: {
+    type: 'started' | 'completed' | 'reply_sent';
+    contactPhone: string;
+    contactName?: string | null;
+    goal: string;
+    summary?: string | null;
+    messageText?: string | null;
+  }): Promise<void> {
+    const isCompleted = details.type === 'completed';
+    const isStarted = details.type === 'started';
+
+    const title = isCompleted
+      ? '🎯 Agent Goal Completed!'
+      : isStarted
+      ? '🤖 Agent Proactive Task Dispatched'
+      : '💬 Autopilot Action Dispatched';
+
+    const color = isCompleted ? 0x10b981 : isStarted ? 0x6366f1 : 0x06b6d4;
+
+    const fields: any[] = [
+      { name: 'Contact', value: `${details.contactName || 'Unknown'} (+${details.contactPhone})`, inline: true },
+      { name: 'Goal', value: details.goal, inline: false }
+    ];
+
+    if (details.messageText) {
+      fields.push({ name: 'Message Sent', value: `"${details.messageText}"`, inline: false });
+    }
+
+    if (details.summary) {
+      fields.push({ name: 'Outcome / Intel Gathered', value: details.summary, inline: false });
+    }
+
+    await this.sendWebhook({
+      username: 'Messiah Agent Operations',
+      avatar_url: 'https://cdn-icons-png.flaticon.com/512/4712/4712038.png',
+      embeds: [
+        {
+          title,
+          color,
+          fields,
+          timestamp: new Date().toISOString()
+        }
+      ]
+    });
+  }
 }
 
 export const discordService = new DiscordService();

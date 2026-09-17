@@ -36,6 +36,9 @@
         <button id="tab-btn-dormant" class="btn" style="background: transparent; color: var(--text-muted); border: none; padding: 0.35rem 0.85rem; font-size: 0.78rem; font-weight: 600; cursor: pointer; border-radius: var(--radius-sm);">
           ❄️ Cold Threads (<span id="tab-dormant-count" class="tabular-nums">0</span>)
         </button>
+        <button id="tab-btn-tasks" class="btn" style="background: transparent; color: var(--text-muted); border: none; padding: 0.35rem 0.85rem; font-size: 0.78rem; font-weight: 600; cursor: pointer; border-radius: var(--radius-sm);">
+          🤖 Agent Tasks (<span id="tab-tasks-count" class="tabular-nums">0</span>)
+        </button>
       </div>
     </div>
 
@@ -258,6 +261,79 @@
         <div style="color: var(--text-dim); font-size: 0.82rem; padding: 3rem; text-align: center; grid-column: 1 / -1;">
           Loading dormant relationships...
         </div>
+      </div>
+    </div>
+
+    <!-- VIEW 4: Agent Task Delegations & Goals -->
+    <div id="view-tasks" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div>
+          <h2 style="font-size: 0.95rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 0.4rem;">
+            <span>🤖</span> WhatsApp Agent Task Delegations
+          </h2>
+          <p style="color: var(--text-muted); font-size: 0.78rem; margin-top: 0.2rem;">
+            Assign goals to the agent with contacts. The agent reaches out in character, steers conversations to complete objectives, and alerts Discord upon success.
+          </p>
+        </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <select id="task-filter-status" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); color: var(--text-main); font-size: 0.75rem; padding: 0.3rem 0.6rem; border-radius: var(--radius-sm);">
+            <option value="all" selected>All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <button id="btn-create-task-modal" class="btn" style="background: #6366f1; color: #fff; border: none; font-size: 0.78rem; font-weight: 600; padding: 0.35rem 0.85rem; border-radius: var(--radius-sm); cursor: pointer;">
+            + Assign Goal / Task
+          </button>
+          <button id="btn-refresh-tasks" class="btn" style="background: transparent; border: 1px solid var(--border-subtle); color: var(--text-dim); font-size: 0.75rem; padding: 0.35rem 0.6rem; border-radius: var(--radius-sm); cursor: pointer;">
+            🔄 Refresh
+          </button>
+        </div>
+      </div>
+
+      <div id="tasks-grid-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1rem;">
+        <div style="color: var(--text-dim); font-size: 0.82rem; padding: 3rem; text-align: center; grid-column: 1 / -1;">
+          Loading agent tasks...
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Task Modal -->
+    <div id="create-task-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 999; align-items: center; justify-content: center;">
+      <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.5rem; width: 90%; max-width: 460px; box-shadow: 0 12px 36px rgba(0,0,0,0.5);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.4rem;">
+            <span>🤖</span> Delegate Goal to WhatsApp Agent
+          </h3>
+          <button id="btn-close-task-modal" style="background: transparent; border: none; color: var(--text-dim); font-size: 1.2rem; cursor: pointer;">&times;</button>
+        </div>
+        <form id="form-create-task" style="display: flex; flex-direction: column; gap: 0.85rem;">
+          <div>
+            <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 0.3rem;">Target Contact</label>
+            <select id="task-contact-select" required style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 0.45rem; border-radius: var(--radius-sm); font-size: 0.82rem;">
+              <option value="">Select a contact...</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 0.3rem;">Assigned Goal / Mission</label>
+            <textarea id="task-goal-input" required rows="3" placeholder="e.g. Ask for the project files and confirm meeting for Friday at 2 PM" style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 0.5rem; border-radius: var(--radius-sm); font-size: 0.82rem; resize: vertical;"></textarea>
+          </div>
+          <div>
+            <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 0.3rem;">Timing</label>
+            <select id="task-timing-select" style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 0.45rem; border-radius: var(--radius-sm); font-size: 0.82rem;">
+              <option value="immediate">Immediate (Next 30 seconds)</option>
+              <option value="15m">In 15 minutes</option>
+              <option value="1h">In 1 hour</option>
+              <option value="3h">In 3 hours</option>
+              <option value="tomorrow">Tomorrow morning (9:00 AM)</option>
+            </select>
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem;">
+            <button type="button" id="btn-cancel-task-modal" class="btn" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); color: var(--text-dim); padding: 0.4rem 0.85rem; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.8rem;">Cancel</button>
+            <button type="submit" class="btn" style="background: #6366f1; color: #fff; border: none; padding: 0.4rem 1rem; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.8rem; font-weight: 600;">Deploy Agent Task</button>
+          </div>
+        </form>
       </div>
     </div>
 

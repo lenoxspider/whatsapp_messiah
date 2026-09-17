@@ -52,7 +52,7 @@ export class ContactRepository {
     stmt.run(persona, jid);
   }
 
-  updateContact(jid: string, updates: { tier?: ContactTier; custom_persona?: string | null; facts_json?: string | null }): void {
+  updateContact(jid: string, updates: { tier?: ContactTier; custom_persona?: string | null; facts_json?: string | null; autopilot_enabled?: number }): void {
     const sets: string[] = [];
     const values: any[] = [];
 
@@ -68,11 +68,20 @@ export class ContactRepository {
       sets.push('facts_json = ?');
       values.push(updates.facts_json);
     }
+    if (updates.autopilot_enabled !== undefined) {
+      sets.push('autopilot_enabled = ?');
+      values.push(updates.autopilot_enabled);
+    }
 
     if (sets.length === 0) return;
     values.push(jid);
     const stmt = this.db.prepare(`UPDATE contacts SET ${sets.join(', ')} WHERE jid = ?`);
     stmt.run(...values);
+  }
+
+  setAutopilot(jid: string, enabled: boolean): void {
+    const stmt = this.db.prepare(`UPDATE contacts SET autopilot_enabled = ? WHERE jid = ?`);
+    stmt.run(enabled ? 1 : 0, jid);
   }
 
   searchContact(query: string): ContactRecord | null {
