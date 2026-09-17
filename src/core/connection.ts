@@ -51,7 +51,7 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
     printQRInTerminal: false,
     auth: state,
     generateHighQualityLinkPreview: true,
-    browser: Browsers.macOS('Chrome'),
+    browser: Browsers.ubuntu('Chrome'),
     syncFullHistory: true,
     shouldSyncHistoryMessage: () => true,
     // Mark as online immediately on connect so WhatsApp sends active delivery receipts.
@@ -124,6 +124,9 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
     await handlePairing(sock, update, isRegistered);
 
     if (connection === 'close') {
+      if (activeSocket && activeSocket !== sock) {
+        return;
+      }
       const decision = evaluateDisconnect(lastDisconnect?.error, isRegistered);
       dashboardState.setStatus('disconnected', decision.reason);
       systemLogger.warn('Connection', `Socket closed: ${decision.reason}. ${decision.shouldReconnect ? 'Reconnecting...' : 'Idle'}`);
