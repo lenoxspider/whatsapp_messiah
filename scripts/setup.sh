@@ -103,6 +103,7 @@ npm run build
 echo -e "${CYAN}[5/5] Launching Messiah daemon under PM2...${NC}"
 pm2 delete whatsapp-messiah 2>/dev/null || true
 pm2 start dist/index.js --name "whatsapp-messiah"
+pm2 startup 2>/dev/null || true
 pm2 save
 
 PUBLIC_IP=$(curl -s ifconfig.me || hostname -I | awk '{print $1}')
