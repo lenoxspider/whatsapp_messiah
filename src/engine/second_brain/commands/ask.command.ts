@@ -47,6 +47,9 @@ export const askCommand: CommandHandler = {
             queryVector = await openaiService.createEmbedding(q);
           }
           const notes = noteRepo.searchHybrid(q, limit, queryVector);
+          if (!notes || notes.length === 0) {
+            return { found: false, message: "I don't have information on that in your Second Brain vault." };
+          }
           return notes.map(n => ({
             id: n.id,
             tag: n.tag,

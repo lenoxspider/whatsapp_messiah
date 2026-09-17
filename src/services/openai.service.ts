@@ -273,26 +273,62 @@ class OpenAIService {
     fileName: string = 'audio.ogg',
     mimeType: string = 'audio/ogg'
   ): Promise<string> {
+    if (!this.isConfigured()) {
+      console.warn('[Whisper] OpenAI API key is not configured. Skipping transcription.');
+      return '';
+    }
+
+    // PRE-FLIGHT CHECK 1: Buffer Presence & Size Validation (< 25 MB hard limit)
+    const MAX_WHISPER_BYTES = 25 * 1024 * 1024; // 25 MB
+    if (!buffer || buffer.length === 0) {
+      console.warn('[Whisper Pre-Flight] ⚠️ Empty audio buffer provided, skipping Whisper API call.');
+      return '';
+    }
+    if (buffer.length > MAX_WHISPER_BYTES) {
+      const sizeMb = (buffer.length / (1024 * 1024)).toFixed(2);
+      console.warn(`[Whisper Pre-Flight] 🛑 Audio file ${fileName} (${sizeMb} MB) exceeds 25 MB Whisper API limit. Aborting request.`);
+      return '';
+    }
+
+    // PRE-FLIGHT CHECK 2: Audio Format Validation
+    const validExtensions = ['flac', 'mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'ogg', 'wav', 'webm', 'opus'];
+    const validMimes = ['audio/', 'video/mp4', 'video/webm', 'application/ogg'];
+
+    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+    const isSupportedMime = validMimes.some(m => mimeType.toLowerCase().startsWith(m));
+    const isSupportedExt = validExtensions.includes(ext);
+
+    if (!isSupportedMime && !isSupportedExt) {
+      console.warn(`[Whisper Pre-Flight] 🛑 Unsupported audio format for ${fileName} (mime: ${mimeType}, ext: ${ext}). Supported formats: mp3, ogg, wav, m4a, flac, webm.`);
+      return '';
+    }
+
     const client = this.getClient();
     const startTime = Date.now();
-    const file = await toFile(buffer, fileName, { type: mimeType });
-    const response = await client.audio.transcriptions.create({
-      file,
-      model: 'whisper-1'
-    });
 
-    const latency = Date.now() - startTime;
-    llmCallRepo.logCall({
-      model: 'whisper-1',
-      purpose: 'whisper_transcription',
-      promptTokens: 0,
-      completionTokens: 0,
-      totalTokens: 0,
-      costUsd: 0.006,
-      latencyMs: latency
-    });
+    try {
+      const file = await toFile(buffer, fileName, { type: mimeType });
+      const response = await client.audio.transcriptions.create({
+        file,
+        model: 'whisper-1'
+      });
 
-    return response.text?.trim() || '';
+      const latency = Date.now() - startTime;
+      llmCallRepo.logCall({
+        model: 'whisper-1',
+        purpose: 'whisper_transcription',
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+        costUsd: 0.006,
+        latencyMs: latency
+      });
+
+      return response.text?.trim() || '';
+    } catch (err: any) {
+      console.error(`[Whisper API Error] Failed to transcribe ${fileName}:`, err.message || err);
+      return '';
+    }
   }
 
   async runAgentLoop(
@@ -537,7 +573,14 @@ Provide a 3-4 sentence concise texting style guide that an AI can use to sound e
 
     const systemPrompt = `You are the user's personal Second Brain AI assistant running inside their WhatsApp.
 Be concise, direct, helpful, and formatted for mobile reading.
-${contextualNotes ? `Relevant notes/memories from the user's personal archive:\n${contextualNotes}` : ''}`;
+
+STRICT RAG CONTEXTUAL RULE:
+- You are searching the user's personal private Second Brain archive.
+- If no relevant notes/memories are provided below, or if the provided archive context does NOT contain the answer, state clearly:
+"I don't have information on that in your Second Brain vault."
+- Do NOT fabricate, guess, or invent false facts outside the provided archive context.
+
+${contextualNotes ? `Relevant notes/memories from the user's personal archive:\n${contextualNotes}` : 'Personal archive context: [No matching notes found]'}`;
 
     const response = await client.chat.completions.create({
       model: env.openaiModel,
@@ -545,11 +588,11 @@ ${contextualNotes ? `Relevant notes/memories from the user's personal archive:\n
         { role: 'system', content: systemPrompt },
         { role: 'user', content: query }
       ],
-      temperature: 0.5,
+      temperature: 0.3,
       max_tokens: 600
     });
 
-    return response.choices[0]?.message?.content?.trim() || 'No response generated.';
+    return response.choices[0]?.message?.content?.trim() || "I don't have information on that in your Second Brain vault.";
   }
 }
 

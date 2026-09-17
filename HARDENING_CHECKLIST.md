@@ -56,9 +56,9 @@
 - [x] **Prompt Injection Isolation**: Wrap inbound message content in strict delimiters in system prompt and grant Ghost zero tool-execution rights.
 
 ### Tier 5: Second Brain & RAG Retrieval Quality
-- [ ] **Cosine Vector Embeddings**: Integrate `text-embedding-3-small` vector BLOB storage in SQLite alongside FTS5 search for semantic note retrieval.
-- [ ] **Strict Context Prompting**: Instruct RAG system prompt to explicitly state "I don't have information on that" when retrieval distance is low.
-- [ ] **Pre-Flight Whisper Checks**: Verify audio format and file size (<25MB) prior to API invocation.
+- [x] **Cosine Vector Embeddings**: Integrate `text-embedding-3-small` vector BLOB storage in SQLite alongside FTS5 search for semantic note retrieval.
+- [x] **Strict Context Prompting**: Instruct RAG system prompt to explicitly state "I don't have information on that" when retrieval distance is low.
+- [x] **Pre-Flight Whisper Checks**: Verify audio format and file size (<25MB) prior to API invocation.
 
 ### Tier 6: Backup & Transport Security
 - [ ] **Encrypted Backups**: Encrypt backup archives (using password/AES) before sending over chat or saving.
