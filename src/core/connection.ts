@@ -8,7 +8,7 @@ import path from 'node:path';
 import pino from 'pino';
 import { initAuthState } from './auth.js';
 import { handlePairing } from './pairing.js';
-import { evaluateDisconnect } from './reconnect.js';
+import { evaluateDisconnect, resetRestartCounter } from './reconnect.js';
 import { dashboardState } from '../server/state.js';
 import { systemLogger } from '../server/logger.js';
 import { env } from '../config/env.js';
@@ -143,7 +143,7 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
       systemLogger.warn('Connection', `Socket closed: ${decision.reason}. ${decision.shouldReconnect ? 'Reconnecting...' : 'Idle'}`);
 
       if (decision.shouldReconnect) {
-        setTimeout(() => startWhatsAppSocket(callbacks), 4000);
+        setTimeout(() => startWhatsAppSocket(callbacks), decision.delayMs ?? 4000);
       }
     } else if (connection === 'open') {
       state.creds.registered = true;
@@ -159,6 +159,7 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
         systemLogger.success('Connection', 'WhatsApp Messiah connected and listening.');
       }
       dashboardState.setStatus('connected');
+      resetRestartCounter();
       callbacks.onReady(sock);
 
       // Explicitly advertise available presence so WhatsApp servers deliver View-Once

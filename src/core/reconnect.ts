@@ -7,6 +7,14 @@ import { env } from '../config/env.js';
 export interface ReconnectDecision {
   shouldReconnect: boolean;
   reason: string;
+  delayMs?: number;
+}
+
+// Track consecutive 428s on unregistered sessions for backoff
+let consecutiveRestartRequired = 0;
+
+export function resetRestartCounter() {
+  consecutiveRestartRequired = 0;
 }
 
 export function evaluateDisconnect(error: unknown, isRegistered: boolean = false): ReconnectDecision {
@@ -24,19 +32,38 @@ export function evaluateDisconnect(error: unknown, isRegistered: boolean = false
             fs.mkdirSync(env.sessionsDir, { recursive: true });
           }
         } catch {}
-        return { shouldReconnect: true, reason: 'Pairing reset' };
+        consecutiveRestartRequired = 0;
+        return { shouldReconnect: true, reason: 'Pairing reset', delayMs: 2000 };
       }
 
       discordService.sendHealthAlert('WhatsApp session was logged out or unlinked by Meta. Re-pairing required.');
       console.error('\n[Connection] Device was logged out. Please delete the sessions/ folder and re-pair.\n');
       return { shouldReconnect: false, reason: 'Logged out' };
 
+    case DisconnectReason.restartRequired:
+      if (!isRegistered) {
+        // WhatsApp rate-limits unregistered devices with repeated 428s.
+        // Apply exponential backoff: 4s, 8s, 16s, 32s max.
+        consecutiveRestartRequired++;
+        const delayMs = Math.min(4000 * Math.pow(2, consecutiveRestartRequired - 1), 32000);
+        if (consecutiveRestartRequired > 2) {
+          console.warn(`[Connection] WhatsApp rate-limiting new session (attempt ${consecutiveRestartRequired}). Backing off ${delayMs / 1000}s before retry...`);
+        } else {
+          console.log(`[Connection] Temporary disconnect (428). Reconnecting in ${delayMs / 1000}s...`);
+        }
+        return { shouldReconnect: true, reason: 'Temporary drop', delayMs };
+      }
+      // Registered session: normal reconnect
+      consecutiveRestartRequired = 0;
+      console.log(`[Connection] Temporary disconnect (428). Reconnecting...`);
+      return { shouldReconnect: true, reason: 'Temporary drop', delayMs: 4000 };
+
     case DisconnectReason.connectionClosed:
     case DisconnectReason.connectionLost:
     case DisconnectReason.timedOut:
-    case DisconnectReason.restartRequired:
+      consecutiveRestartRequired = 0;
       console.log(`[Connection] Temporary disconnect (${statusCode}). Reconnecting...`);
-      return { shouldReconnect: true, reason: 'Temporary drop' };
+      return { shouldReconnect: true, reason: 'Temporary drop', delayMs: 4000 };
 
     case DisconnectReason.connectionReplaced:
       console.warn('[Connection] Connection replaced: another session took over. Halting auto-reconnect to avoid collision.');
@@ -44,6 +71,6 @@ export function evaluateDisconnect(error: unknown, isRegistered: boolean = false
 
     default:
       console.log(`[Connection] Disconnected with status code ${statusCode}. Attempting reconnect.`);
-      return { shouldReconnect: true, reason: 'Unknown' };
+      return { shouldReconnect: true, reason: 'Unknown', delayMs: 4000 };
   }
 }
