@@ -246,7 +246,6 @@ if (!channelInDb && !channelContact) {
 // 14. Test Universal Action Engine: Web Search, System Runner & Security Guardrails
 import { webSearchService } from '../src/services/web_search.service.js';
 import { systemRunnerService } from '../src/services/system_runner.service.js';
-import { AGENT_TOOLS } from '../src/services/openai.service.js';
 
 // Test 22: Web Search Live Query
 const webSearchResults = await webSearchService.search('TypeScript', 2);
