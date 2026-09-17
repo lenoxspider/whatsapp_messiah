@@ -28,7 +28,7 @@ npm run build
 
 echo -e "${CYAN}[4/4] Reloading PM2 process...${NC}"
 if command -v pm2 &> /dev/null; then
-  pm2 reload whatsapp-messiah || pm2 restart whatsapp-messiah
+  pm2 reload messiah || pm2 restart messiah || pm2 reload whatsapp-messiah || pm2 restart whatsapp-messiah
 else
   echo -e "${YELLOW}PM2 not found. Please restart your daemon manually.${NC}"
 fi
@@ -38,4 +38,4 @@ echo -e "${GREEN}=============================================================="
 echo "          ✅ WHATSAPP MESSIAH UPDATED SUCCESSFULLY!           "
 echo "=============================================================="
 echo -e "${NC}"
-echo "Check live logs with: pm2 logs whatsapp-messiah"
+echo "Check live logs with: pm2 logs messiah (or pm2 logs whatsapp-messiah)"

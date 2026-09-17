@@ -8,6 +8,8 @@ import { statusStealRepo } from '../../db/repositories/status_steal.repo.js';
 import { discordService } from '../../services/discord.service.js';
 import { purgeAllData } from '../../db/schema.js';
 import { backupService } from '../../services/backup.service.js';
+import { getActiveSocket } from '../../core/connection.js';
+import { dashboardState } from '../state.js';
 
 const execAsync = promisify(exec);
 const isWin = process.platform === 'win32';
@@ -181,7 +183,7 @@ extrasRouter.post('/update', async (req, res) => {
     setTimeout(async () => {
       try {
         console.log('[Updater] Triggering PM2 reload/restart...');
-        await execAsync('pm2 reload whatsapp-messiah || pm2 restart whatsapp-messiah');
+        await execAsync('pm2 reload messiah || pm2 restart messiah || pm2 reload whatsapp-messiah || pm2 restart whatsapp-messiah || pm2 restart 0');
       } catch (pm2Err) {
         console.warn('[Updater] PM2 reload failed, triggering process exit for supervisor:', pm2Err);
         process.exit(0);
@@ -207,7 +209,7 @@ extrasRouter.post('/restart', (req, res) => {
   setTimeout(async () => {
     try {
       console.log('[Daemon] Restart triggered from Dashboard...');
-      await execAsync('pm2 restart whatsapp-messiah');
+      await execAsync('pm2 restart messiah || pm2 restart whatsapp-messiah || pm2 restart whatsapp_messiah || pm2 restart 0');
     } catch (pm2Err) {
       console.warn('[Daemon] PM2 restart failed, triggering process exit for supervisor:', pm2Err);
       process.exit(0);
@@ -220,7 +222,24 @@ extrasRouter.post('/factory-reset', async (req, res) => {
   try {
     console.log('[Factory Reset] Initiating complete vault & session purge...');
 
-    // 1. Create safety snapshot first so user never loses unrecoverable data accidentally
+    // 1. Terminate the active WhatsApp socket cleanly FIRST
+    // This prevents Baileys from throwing file access errors and prevents auto-reconnect loops while sessions are wiped
+    const sock = getActiveSocket();
+    if (sock) {
+      try {
+        sock.ev.removeAllListeners('connection.update');
+        sock.ev.removeAllListeners('creds.update');
+        sock.ev.removeAllListeners('messages.upsert');
+        sock.end(undefined);
+      } catch {}
+    }
+
+    dashboardState.setStatus('disconnected', 'Factory reset completed');
+    dashboardState.setQR(null);
+    dashboardState.setPairingCode(null);
+    dashboardState.setPairedPhone(null);
+
+    // 2. Create safety snapshot first so user never loses unrecoverable data accidentally
     try {
       await backupService.createBackup({ label: 'pre-factory-reset' });
       console.log('[Factory Reset] Pre-reset safety snapshot created.');
@@ -228,26 +247,32 @@ extrasRouter.post('/factory-reset', async (req, res) => {
       console.warn('[Factory Reset] Safety snapshot failed, proceeding with purge:', bErr);
     }
 
-    // 2. Clear all SQLite database tables
+    // 3. Clear all SQLite database tables
     purgeAllData();
     console.log('[Factory Reset] Database tables purged.');
 
-    // 3. Purge decrypted media vault
+    // 4. Purge decrypted media vault
     const mediaDir = path.resolve('data', 'media');
     if (fs.existsSync(mediaDir)) {
-      for (const file of fs.readdirSync(mediaDir)) {
-        try { fs.unlinkSync(path.join(mediaDir, file)); } catch {}
+      try {
+        fs.rmSync(mediaDir, { recursive: true, force: true });
+        fs.mkdirSync(mediaDir, { recursive: true });
+        console.log('[Factory Reset] Media vault cleared.');
+      } catch (mErr) {
+        console.warn('[Factory Reset] Could not clear media vault:', mErr);
       }
-      console.log('[Factory Reset] Media vault cleared.');
     }
 
-    // 4. Purge Baileys sessions
+    // 5. Purge Baileys sessions directory completely
     const sDir = path.resolve(env.sessionsDir);
     if (fs.existsSync(sDir)) {
-      for (const file of fs.readdirSync(sDir)) {
-        try { fs.unlinkSync(path.join(sDir, file)); } catch {}
+      try {
+        fs.rmSync(sDir, { recursive: true, force: true });
+        fs.mkdirSync(sDir, { recursive: true });
+        console.log('[Factory Reset] Sessions cleared.');
+      } catch (sErr) {
+        console.warn('[Factory Reset] Could not clear sessions dir:', sErr);
       }
-      console.log('[Factory Reset] Sessions cleared.');
     }
 
     res.json({
@@ -259,8 +284,9 @@ extrasRouter.post('/factory-reset', async (req, res) => {
     setTimeout(async () => {
       try {
         console.log('[Factory Reset] Restarting daemon after reset...');
-        await execAsync('pm2 restart whatsapp-messiah');
+        await execAsync('pm2 restart messiah || pm2 restart whatsapp-messiah || pm2 restart whatsapp_messiah || pm2 restart 0');
       } catch (pm2Err) {
+        console.warn('[Factory Reset] PM2 restart command failed, triggering process.exit(0) for supervisor:', pm2Err);
         process.exit(0);
       }
     }, 1500);
