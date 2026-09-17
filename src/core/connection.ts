@@ -57,9 +57,10 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
     printQRInTerminal: false,
     auth: state,
     generateHighQualityLinkPreview: true,
-    // macOS Desktop client identity enables full companion media delivery (including View-Once)
-    // whereas Web/Ubuntu identity causes WhatsApp servers to send empty View-Once stubs (<unavailable type="view_once" />).
-    browser: Browsers.macOS('Desktop'),
+    // Use Ubuntu/Chrome browser identity for fresh sessions.
+    // macOS Desktop can cause 428 rejections on unregistered sessions
+    // as WhatsApp expects it only from already-linked companion devices.
+    browser: Browsers.ubuntu('Chrome'),
     syncFullHistory: true,
     shouldSyncHistoryMessage: () => true,
     // Mark as online on connect only when already registered.
