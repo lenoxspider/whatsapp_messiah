@@ -52,7 +52,12 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
   const myLid = (sock.user as any)?.lid ? (sock.user as any).lid.split(':')[0] + '@lid' : '';
 
   for (const msg of messages) {
-    if (!msg.message) continue;
+    // DIAGNOSTIC: Log stubs / null-message events so we can see business View-Once arriving
+    if (!msg.message) {
+      const stubJid = msg.key?.remoteJid || 'unknown';
+      console.log(`[Router] ⚠️  msg.message is null (stub/receipt) for ${msg.key?.id} from ${stubJid} (upsert.type=${type})`);
+      continue;
+    }
 
     // Handle Protocol Events (Revocation & Message Edits)
     const protocolMessage = msg.message?.protocolMessage;
@@ -247,6 +252,15 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
     };
 
     // Asynchronously extract and decrypt media (so text routing remains instant)
+    // Skip extraction for plain text-only messages (conversation, extendedText) with no media wrappers
+    const isPureText = (messageType === 'conversation' || messageType === 'extendedTextMessage') && !isViewOnce;
+    const outerRaw = isPureText ? JSON.stringify(msg.message || {}) : '';
+    const mightHaveMedia = !isPureText ||
+      outerRaw.includes('imageMessage') ||
+      outerRaw.includes('videoMessage') ||
+      outerRaw.includes('audioMessage');
+
+    if (mightHaveMedia) {
     mediaExtractor.extractAndSaveMedia(msg).then(async (extracted) => {
       if (!extracted) return;
 
@@ -323,6 +337,7 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
     }).catch(err => {
       console.warn(`[Media Extraction Error] ${msgId}: ${err.message}`);
     });
+    } // end if(mightHaveMedia)
 
     // 2. SELF-CHAT / SECOND BRAIN ROUTING:
     // Matches if message was sent from your account to yourself OR if you type any '!' command in any DM
