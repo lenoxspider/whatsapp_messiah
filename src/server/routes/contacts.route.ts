@@ -194,3 +194,54 @@ contactsRouter.post('/:jid/dossier/refresh', async (req, res) => {
   }
 });
 
+contactsRouter.post('/import', (req, res) => {
+  const { vcf, contacts } = req.body;
+  let importedCount = 0;
+
+  if (Array.isArray(contacts)) {
+    for (const c of contacts) {
+      if (c.phone) {
+        const cleanPhone = String(c.phone).replace(/[^0-9]/g, '');
+        if (cleanPhone.length >= 7) {
+          const jid = `${cleanPhone}@s.whatsapp.net`;
+          contactRepo.upsertContact(jid, cleanPhone, c.name ? String(c.name).trim() : null, c.tier || 3);
+          importedCount++;
+        }
+      }
+    }
+  }
+
+  if (typeof vcf === 'string' && vcf.trim()) {
+    // Parse vCard standard format (VCF from Google Contacts, Apple Contacts, or phone export)
+    const cards = vcf.split(/BEGIN:VCARD/i);
+    for (const card of cards) {
+      if (!card.includes('END:VCARD')) continue;
+
+      let name = '';
+      const fnMatch = card.match(/^FN.*?:([^\r\n]+)/im);
+      if (fnMatch) {
+        name = fnMatch[1].trim();
+      } else {
+        const nMatch = card.match(/^N.*?:([^\r\n]+)/im);
+        if (nMatch) {
+          name = nMatch[1].split(';').filter(Boolean).reverse().join(' ').trim();
+        }
+      }
+
+      // Find all telephone numbers
+      const telMatches = card.matchAll(/^TEL.*?:([^\r\n]+)/gim);
+      for (const telMatch of telMatches) {
+        const rawPhone = telMatch[1];
+        const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
+        if (cleanPhone.length >= 7) {
+          const jid = `${cleanPhone}@s.whatsapp.net`;
+          contactRepo.upsertContact(jid, cleanPhone, name || null, 3);
+          importedCount++;
+        }
+      }
+    }
+  }
+
+  res.json({ success: true, imported: importedCount });
+});
+

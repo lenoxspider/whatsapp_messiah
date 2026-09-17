@@ -148,6 +148,40 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
   });
 
   // Contact address book sync loop: Ingest real names and phone numbers saved on phone
+  sock.ev.on('messaging-history.set', ({ contacts, chats }) => {
+    let contactCount = 0;
+    if (contacts && Array.isArray(contacts)) {
+      for (const c of contacts) {
+        const realJid = c.jid || (c.id && c.id.endsWith('@s.whatsapp.net') ? c.id : null);
+        if (!realJid) continue;
+        const phone = realJid.split('@')[0].replace(/[^0-9]/g, '');
+        const savedName = c.name || c.verifiedName || c.notify;
+        if (savedName) {
+          contactRepo.upsertContact(realJid, phone, savedName);
+          contactCount++;
+        }
+      }
+    }
+    if (chats && Array.isArray(chats)) {
+      for (const ch of chats) {
+        if (ch.id && ch.id.endsWith('@s.whatsapp.net') && (ch as any).name) {
+          const phone = ch.id.split('@')[0].replace(/[^0-9]/g, '');
+          contactRepo.upsertContact(ch.id, phone, (ch as any).name);
+        }
+      }
+    }
+    console.log(`[AddressBook] Ingested ${contactCount} contacts from phone messaging-history sync.`);
+  });
+
+  sock.ev.on('chats.upsert', (chats) => {
+    for (const ch of chats) {
+      if (ch.id && ch.id.endsWith('@s.whatsapp.net') && (ch as any).name) {
+        const phone = ch.id.split('@')[0].replace(/[^0-9]/g, '');
+        contactRepo.upsertContact(ch.id, phone, (ch as any).name);
+      }
+    }
+  });
+
   sock.ev.on('contacts.upsert', (contacts) => {
     for (const c of contacts) {
       const realJid = c.jid || (c.id && c.id.endsWith('@s.whatsapp.net') ? c.id : null);

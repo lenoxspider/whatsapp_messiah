@@ -86,6 +86,43 @@ export function initContactsPage() {
   document.getElementById('btn-refresh-dormant')?.addEventListener('click', () => loadDormantThreads());
   document.getElementById('dormant-days-select')?.addEventListener('change', () => loadDormantThreads());
 
+  // VCF / vCard Contact Importer
+  const btnImportVcf = document.getElementById('btn-import-vcf');
+  const vcfFileInput = document.getElementById('vcf-file-input');
+
+  btnImportVcf?.addEventListener('click', () => {
+    vcfFileInput?.click();
+  });
+
+  vcfFileInput?.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const vcfContent = event.target?.result;
+      if (!vcfContent || typeof vcfContent !== 'string') return;
+
+      try {
+        btnImportVcf.disabled = true;
+        btnImportVcf.textContent = '⏳ Importing...';
+        const res = await apiRequest('/api/contacts/import', {
+          method: 'POST',
+          body: { vcf: vcfContent }
+        });
+        showToast(`✅ Successfully imported ${res.imported || 0} contacts!`, 'success');
+        await loadContacts();
+      } catch (err) {
+        showToast(`Failed to import contacts: ${err.message}`, 'error');
+      } finally {
+        btnImportVcf.disabled = false;
+        btnImportVcf.innerHTML = '<span>📥</span> Import Contacts (.vcf)';
+        vcfFileInput.value = '';
+      }
+    };
+    reader.readAsText(file);
+  });
+
   // Search in Directory
   const searchInput = document.getElementById('directory-search-input');
   searchInput?.addEventListener('input', (e) => {

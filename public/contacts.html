@@ -40,6 +40,13 @@
           🤖 Agent Tasks (<span id="tab-tasks-count" class="tabular-nums">0</span>)
         </button>
       </div>
+
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <input type="file" id="vcf-file-input" accept=".vcf,.vcard" style="display: none;" />
+        <button id="btn-import-vcf" class="btn" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 0.35rem 0.85rem; font-size: 0.78rem; font-weight: 600; cursor: pointer; border-radius: var(--radius-sm); display: flex; align-items: center; gap: 0.4rem;" title="Upload .vcf address book exported from iPhone or Google Contacts">
+          <span>📥</span> Import Contacts (.vcf)
+        </button>
+      </div>
     </div>
 
     <!-- VIEW 0: Two-Pane Contact Directory & Dossier Inspector -->
