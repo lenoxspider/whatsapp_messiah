@@ -22,6 +22,7 @@ export interface AppConfig {
   statusStealerTrigger: string;
   statusStealerAutoDelete: boolean;
   statusStealerDiscord: boolean;
+  backupPassword: string;
 }
 
 function parseEnv(): AppConfig {
@@ -43,6 +44,7 @@ function parseEnv(): AppConfig {
   const statusStealerTrigger = process.env.STATUS_STEALER_TRIGGER || '!😶🌫️';
   const statusStealerAutoDelete = process.env.STATUS_STEALER_AUTO_DELETE !== '0' && process.env.STATUS_STEALER_AUTO_DELETE !== 'false';
   const statusStealerDiscord = process.env.STATUS_STEALER_DISCORD !== '0' && process.env.STATUS_STEALER_DISCORD !== 'false';
+  const backupPassword = process.env.BACKUP_PASSWORD || dashboardPassword || 'Messiah_AES256_Backup_Key_2026';
 
   return {
     pairingMethod,
@@ -62,7 +64,8 @@ function parseEnv(): AppConfig {
     forwardMediaToDiscord,
     statusStealerTrigger,
     statusStealerAutoDelete,
-    statusStealerDiscord
+    statusStealerDiscord,
+    backupPassword
   };
 }
 

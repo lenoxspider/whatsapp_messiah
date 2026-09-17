@@ -61,9 +61,9 @@
 - [x] **Pre-Flight Whisper Checks**: Verify audio format and file size (<25MB) prior to API invocation.
 
 ### Tier 6: Backup & Transport Security
-- [ ] **Encrypted Backups**: Encrypt backup archives (using password/AES) before sending over chat or saving.
-- [ ] **Backup Retention Policy**: Enforce automated backup rotation (keep last N daily, M weekly backups).
-- [ ] **Restore Verification Drill**: Document and test local database restore procedure.
+- [x] **Encrypted Backups**: Encrypt backup archives (using password/AES) before sending over chat or saving.
+- [x] **Backup Retention Policy**: Enforce automated backup rotation (keep last N daily, M weekly backups).
+- [x] **Restore Verification Drill**: Document and test local database restore procedure.
 
 ---
 
