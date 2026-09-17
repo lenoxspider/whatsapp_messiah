@@ -62,10 +62,9 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
     browser: Browsers.macOS('Desktop'),
     syncFullHistory: true,
     shouldSyncHistoryMessage: () => true,
-    // Mark as online immediately on connect so WhatsApp sends active delivery receipts.
-    // Without this, sendActiveReceipts stays false → receipts sent as 'inactive' →
-    // WhatsApp Business servers skip View-Once delivery to what they see as an offline device.
-    markOnlineOnConnect: true,
+    // Mark as online on connect only when already registered.
+    // Unregistered sockets must not send presence before pairing, otherwise WhatsApp terminates with 428.
+    markOnlineOnConnect: Boolean(state.creds.registered),
     getMessage: async (key) => {
       if (key.id) {
         const msg = messageRepo.getMessageById(key.id);
