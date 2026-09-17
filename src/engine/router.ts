@@ -14,6 +14,30 @@ import { statusStealRepo } from '../db/repositories/status_steal.repo.js';
 import { statusTargetRepo } from '../db/repositories/status_target.repo.js';
 import { antiEditHandler } from './messiah/anti_edit.js';
 import { identityService } from '../services/identity.service.js';
+import { quarantineFailedPayload } from './messiah/quarantine.js';
+
+class BoundedSet<T> {
+  private set = new Set<T>();
+  constructor(private maxSize = 5000) {}
+
+  add(val: T): void {
+    if (this.set.has(val)) return;
+    if (this.set.size >= this.maxSize) {
+      const first = this.set.values().next().value;
+      if (first !== undefined) this.set.delete(first);
+    }
+    this.set.add(val);
+  }
+
+  has(val: T): boolean {
+    return this.set.has(val);
+  }
+}
+
+const requestedPlaceholderResends = new BoundedSet<string>(2000);
+const decodedPdoIds = new BoundedSet<string>(2000);
+const processedViewOnceAlerts = new BoundedSet<string>(2000);
+
 
 export function isStatusStealerTrigger(inputText: string, configuredTrigger: string): boolean {
   if (!inputText) return false;
@@ -62,16 +86,20 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
     // DIAGNOSTIC: Log stubs / null-message events and trigger placeholder resend
     if (!msg.message) {
       const stubJid = msg.key?.remoteJid || 'unknown';
+      const stubId = msg.key?.id;
       if ((msg.key as any)?.isViewOnce) {
-        console.warn(`[Router] ⚠️ WhatsApp delivered an unavailable View-Once stub for ${msg.key?.id} from ${stubJid}. Requesting resend...`);
+        console.warn(`[Router] ⚠️ WhatsApp delivered an unavailable View-Once stub for ${stubId} from ${stubJid}. Requesting resend...`);
       } else {
-        console.log(`[Router] ⚠️  msg.message is null (stub/receipt) for ${msg.key?.id} from ${stubJid} (upsert.type=${type})`);
+        console.log(`[Router] ⚠️  msg.message is null (stub/receipt) for ${stubId} from ${stubJid} (upsert.type=${type})`);
       }
 
-      // Request placeholder resend from primary device so media content gets delivered
-      if (msg.key && typeof (sock as any)?.requestPlaceholderResend === 'function') {
+      // Deduplicate placeholder resend requests so socket is not spammed
+      if (stubId && requestedPlaceholderResends.has(stubId)) {
+        console.log(`[Router] ℹ️ Placeholder resend already requested for ${stubId}, skipping duplicate request.`);
+      } else if (msg.key && typeof (sock as any)?.requestPlaceholderResend === 'function') {
+        if (stubId) requestedPlaceholderResends.add(stubId);
         (sock as any).requestPlaceholderResend(msg.key).catch((err: any) => {
-          console.warn(`[Router] Failed to request placeholder resend for ${msg.key?.id}:`, err?.message || err);
+          console.warn(`[Router] Failed to request placeholder resend for ${stubId}:`, err?.message || err);
         });
       }
       continue;
@@ -109,20 +137,34 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
               const bytes = result?.placeholderMessageResendResponse?.webMessageInfoBytes;
               if (bytes) {
                 const buf = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes, 'base64');
-                const decoded = BaileysProto.WebMessageInfo.decode(buf);
-                const plainObj = BaileysProto.WebMessageInfo.toObject(decoded, { defaults: true });
-                if (plainObj?.message) {
-                  console.log(`[Router] 📦 Decoded View-Once placeholder resend for ${plainObj.key?.id || decoded.key?.id}`);
-                  // Explicitly tag View-Once flag on re-injected message object so it is preserved
-                  (plainObj as any).isViewOnce = true;
-                  if (plainObj.key) (plainObj.key as any).isViewOnce = true;
-                  upsert.messages.push(plainObj as any);
+                try {
+                  const decoded = BaileysProto.WebMessageInfo.decode(buf);
+                  const plainObj = BaileysProto.WebMessageInfo.toObject(decoded, { defaults: true });
+                  const pdoId = plainObj?.key?.id || decoded?.key?.id;
+
+                  if (pdoId && decodedPdoIds.has(pdoId)) {
+                    console.log(`[Router] ℹ️ Type 17 PDO response for ${pdoId} already decoded, skipping duplicate.`);
+                    continue;
+                  }
+                  if (pdoId) decodedPdoIds.add(pdoId);
+
+                  if (plainObj?.message) {
+                    console.log(`[Router] 📦 Decoded View-Once placeholder resend for ${pdoId}`);
+                    // Explicitly tag View-Once flag on re-injected message object so it is preserved
+                    (plainObj as any).isViewOnce = true;
+                    if (plainObj.key) (plainObj.key as any).isViewOnce = true;
+                    upsert.messages.push(plainObj as any);
+                  }
+                } catch (protoErr: any) {
+                  console.warn('[Router] Failed to decode placeholder resend protobuf:', protoErr.message);
+                  quarantineFailedPayload(buf, protocolMessage?.key?.id, protoErr, 'Type 17 PDO Protobuf Decode Failure');
                 }
               }
             }
           }
-        } catch (protoErr: any) {
-          console.warn('[Router] Failed to decode placeholder resend protobuf:', protoErr.message);
+        } catch (err: any) {
+          console.warn('[Router] Failed to process PDO response message:', err.message);
+          quarantineFailedPayload(protocolMessage, protocolMessage?.key?.id, err, 'Type 17 PDO Wrapper Failure');
         }
         continue;
       }
@@ -361,7 +403,13 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
 
       const wasViewOnce = Boolean(isViewOnce || extracted.isViewOnce || (msg as any)?.isViewOnce || (msg.key as any)?.isViewOnce);
       if (wasViewOnce && !isStatusBroadcast) {
-        console.log(`[Anti-ViewOnce] Ephemeral View-Once from ${senderPhone} (fromMe=${fromMe}) decrypted.`);
+        if (processedViewOnceAlerts.has(msgId)) {
+          console.log(`[Anti-ViewOnce] ℹ️ Alert for View-Once message ${msgId} already processed, skipping duplicate alert.`);
+          return;
+        }
+        processedViewOnceAlerts.add(msgId);
+
+        console.log(`[Anti-ViewOnce] Ephemeral View-Once from ${senderPhone} (fromMe=${fromMe}) decrypted and stored eagerly at ${extracted.filePath}.`);
 
         // 1. Forward to Discord if configured
         if (env.forwardMediaToDiscord) {
@@ -417,6 +465,9 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
       }
     }).catch(err => {
       console.warn(`[Media Extraction Error] ${msgId}: ${err.message}`);
+      if (isViewOnce) {
+        quarantineFailedPayload(msg, msgId, err, 'View-Once Media Extraction Exception');
+      }
     });
     } // end if(mightHaveMedia)
 

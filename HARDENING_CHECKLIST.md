@@ -39,9 +39,9 @@
 - [x] **Socket Heartbeat Monitor**: Checks WebSocket `readyState` every 60s and triggers clean reconnection if socket drops silently.
 
 ### Tier 2: Anti-ViewOnce Optimization
-- [ ] **Message ID Idempotency**: Single deduplication key on message ID across both resend request and Type 17 decode paths to prevent duplicate alerts.
-- [ ] **Decode Failure Quarantine**: If protobuf decoding throws, dump raw base64 payload to `data/quarantine/` for future offline decoding.
-- [ ] **Eager Local Download**: Download media buffer immediately upon decode and store locally before dispatching alerts.
+- [x] **Message ID Idempotency**: Single deduplication key on message ID across both resend request and Type 17 decode paths to prevent duplicate alerts.
+- [x] **Decode Failure Quarantine**: If protobuf decoding throws, dump raw base64 payload to `data/quarantine/` for future offline decoding.
+- [x] **Eager Local Download**: Download media buffer immediately upon decode and store locally before dispatching alerts.
 
 ### Tier 3: Anti-Revoke & Anti-Edit Protection
 - [ ] **Unconditional Store-On-Arrival**: Save inbound messages and media immediately before any protocol processing; ensure `handleRevoke` only updates existing rows.
