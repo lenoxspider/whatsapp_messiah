@@ -19,6 +19,9 @@ export interface AppConfig {
   maxTypingDelayMs: number;
   autoRejectCalls: boolean;
   forwardMediaToDiscord: boolean;
+  statusStealerTrigger: string;
+  statusStealerAutoDelete: boolean;
+  statusStealerDiscord: boolean;
 }
 
 function parseEnv(): AppConfig {
@@ -37,6 +40,9 @@ function parseEnv(): AppConfig {
   const maxTypingDelayMs = Number(process.env.MAX_TYPING_DELAY_MS) || 8000;
   const autoRejectCalls = process.env.AUTO_REJECT_CALLS !== '0' && process.env.AUTO_REJECT_CALLS !== 'false';
   const forwardMediaToDiscord = process.env.FORWARD_MEDIA_TO_DISCORD !== '0' && process.env.FORWARD_MEDIA_TO_DISCORD !== 'false';
+  const statusStealerTrigger = process.env.STATUS_STEALER_TRIGGER || '!😶🌫️';
+  const statusStealerAutoDelete = process.env.STATUS_STEALER_AUTO_DELETE !== '0' && process.env.STATUS_STEALER_AUTO_DELETE !== 'false';
+  const statusStealerDiscord = process.env.STATUS_STEALER_DISCORD !== '0' && process.env.STATUS_STEALER_DISCORD !== 'false';
 
   return {
     pairingMethod,
@@ -53,7 +59,10 @@ function parseEnv(): AppConfig {
     typingSpeedMs,
     maxTypingDelayMs,
     autoRejectCalls,
-    forwardMediaToDiscord
+    forwardMediaToDiscord,
+    statusStealerTrigger,
+    statusStealerAutoDelete,
+    statusStealerDiscord
   };
 }
 

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Messiah | Covert Ops & Extras</title>
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/navbar.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <style>
+    .covert-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: rgba(56, 189, 248, 0.12);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      font-size: 0.72rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+    .trigger-preset-chip {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-family: var(--font-mono);
+      transition: all 0.15s ease;
+    }
+    .trigger-preset-chip:hover {
+      background: var(--bg-elevated);
+      color: #38bdf8;
+      border-color: #38bdf8;
+    }
+    .switch-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.65rem 0;
+      border-bottom: 1px solid var(--border-subtle);
+      cursor: pointer;
+    }
+    .switch-label:last-child {
+      border-bottom: none;
+    }
+    .switch-input {
+      appearance: none;
+      width: 36px;
+      height: 20px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      position: relative;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+    .switch-input:checked {
+      background: #38bdf8;
+      border-color: #38bdf8;
+    }
+    .switch-input::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 14px;
+      height: 14px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s ease;
+    }
+    .switch-input:checked::after {
+      transform: translateX(16px);
+    }
+    .status-card-item {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+      cursor: pointer;
+      transition: background 0.15s ease;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .status-card-item:hover, .status-card-item.active {
+      background: var(--bg-elevated);
+    }
+  </style>
+</head>
+<body>
+
+  <main class="main-content" style="padding: 1.5rem; max-width: 1400px; margin: 0 auto; width: 100%;">
+    
+    <!-- Top Operations Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+      <div>
+        <h1 style="font-size: 1.35rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+          <span>🥷</span> COVERT OPS & EXTRAS
+          <span class="covert-badge">GHOST CAPTURE</span>
+        </h1>
+        <p style="color: var(--text-muted); font-size: 0.82rem;">
+          Covert WhatsApp status exfiltration, trigger customization, stealth auto-revocation, and Discord intelligence delivery.
+        </p>
+      </div>
+
+      <!-- Action Feedback Banner -->
+      <div id="save-status-msg" style="display: none; font-size: 0.8rem; color: #38bdf8; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); padding: 0.35rem 0.8rem; border-radius: var(--radius-sm);">
+        Changes saved
+      </div>
+    </div>
+
+    <!-- Status Stealer Configuration Deck -->
+    <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
+        <div>
+          <h2 style="font-size: 0.95rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 0.4rem;">
+            <span>🌫️</span> Status Stealer ("Ghost Capture") Settings
+          </h2>
+          <p style="color: var(--text-muted); font-size: 0.78rem; margin-top: 0.2rem;">
+            When you view any contact's WhatsApp status and reply with your secret trigger, Messiah downloads the high-res photo/video or text and routes it to Discord.
+          </p>
+        </div>
+        <button id="btn-test-discord" class="btn" style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-size: 0.75rem; padding: 0.35rem 0.75rem; border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; gap: 0.4rem;">
+          <span>📡</span> Test Discord Webhook
+        </button>
+      </div>
+
+      <!-- Config Grid -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+        
+        <!-- Left: Trigger Configuration -->
+        <div>
+          <label style="display: block; font-size: 0.78rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.4rem;">
+            Secret Reply Trigger
+          </label>
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 0.6rem;">
+            <input 
+              type="text" 
+              id="input-trigger" 
+              class="form-input" 
+              placeholder="e.g. !😶🌫️" 
+              style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 0.95rem; height: 38px; padding: 0 0.85rem; flex: 1;"
+            />
+            <button id="btn-save-extras" class="btn" style="background: #38bdf8; color: #07090e; font-weight: 700; border: none; padding: 0 1rem; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.82rem;">
+              Save
+            </button>
+          </div>
+
+          <!-- Presets -->
+          <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+            <span style="font-size: 0.72rem; color: var(--text-dim);">Presets:</span>
+            <button class="trigger-preset-chip" data-trigger="!😶🌫️">!😶🌫️ (Face in clouds)</button>
+            <button class="trigger-preset-chip" data-trigger="!yoink">!yoink</button>
+            <button class="trigger-preset-chip" data-trigger="!steal">!steal</button>
+            <button class="trigger-preset-chip" data-trigger="!grab">!grab</button>
+            <button class="trigger-preset-chip" data-trigger="!save">!save</button>
+          </div>
+        </div>
+
+        <!-- Right: Stealth & Routing Switches -->
+        <div>
+          <label class="switch-label">
+            <div>
+              <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-main);">Stealth Auto-Delete (Revocation)</div>
+              <div style="font-size: 0.74rem; color: var(--text-muted); max-width: 380px;">
+                Instantly issues a "Delete for Everyone" revocation protocol for your trigger message so the contact never sees it.
+              </div>
+            </div>
+            <input type="checkbox" id="toggle-autodelete" class="switch-input" checked />
+          </label>
+
+          <label class="switch-label">
+            <div>
+              <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-main);">Forward to Discord Webhook</div>
+              <div style="font-size: 0.74rem; color: var(--text-muted); max-width: 380px;">
+                Dispatches high-res media files and rich preview cards directly to your private Discord channel.
+              </div>
+            </div>
+            <input type="checkbox" id="toggle-discord" class="switch-input" checked />
+          </label>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Intercepted Status Vault (Two-Pane Console Layout) -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+      <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+        <span>🗄️</span> Intercepted Statuses Vault
+        <span class="badge" id="status-total-count" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); color: var(--text-muted); font-size: 0.7rem; padding: 0.15rem 0.45rem; border-radius: var(--radius-sm);">0</span>
+      </div>
+      <button id="btn-refresh-statuses" class="btn" style="background: transparent; border: 1px solid var(--border-subtle); color: var(--text-dim); font-size: 0.75rem; padding: 0.25rem 0.6rem; border-radius: var(--radius-sm); cursor: pointer;">
+        🔄 Refresh Feed
+      </button>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 420px 1fr; gap: 1rem; height: calc(100vh - 380px); min-height: 400px;">
+      
+      <!-- Left Pane: Captured Statuses Feed -->
+      <div class="pane-surface" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); display: flex; flex-direction: column; overflow: hidden;">
+        <div class="pane-header" style="padding: 0.65rem 1rem; border-bottom: 1px solid var(--border-subtle); font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">
+          Exfiltration Log
+        </div>
+        <div class="pane-scrollable" id="status-list-container" style="flex: 1; overflow-y: auto;">
+          <div style="color: var(--text-dim); font-size: 0.82rem; padding: 2.5rem; text-align: center;">
+            Loading exfiltrated statuses...
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Pane: Status Inspector / Previewer -->
+      <div class="pane-surface" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); display: flex; flex-direction: column; overflow: hidden;">
+        <div class="pane-header" style="padding: 0.65rem 1rem; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">Status Evidence Inspector</span>
+          <div id="inspector-actions" style="display: flex; gap: 0.5rem;"></div>
+        </div>
+        <div class="pane-scrollable" id="status-inspector-container" style="flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+          <div style="color: var(--text-dim); font-size: 0.82rem; text-align: center;">
+            Select any intercepted status from the exfiltration log to inspect media, full text, and contact metadata.
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <script type="module" src="/js/nav.js"></script>
+  <script type="module" src="/js/pages/extras.js"></script>
+</body>
+</html>

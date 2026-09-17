@@ -10,6 +10,19 @@ import type { IncomingMessageContext } from '../types/message.js';
 import { env } from '../config/env.js';
 import { openaiService } from '../services/openai.service.js';
 import { noteRepo } from '../db/repositories/note.repo.js';
+import { statusStealRepo } from '../db/repositories/status_steal.repo.js';
+
+export function isStatusStealerTrigger(inputText: string, configuredTrigger: string): boolean {
+  if (!inputText) return false;
+  const norm = (s: string) =>
+    s
+      .trim()
+      .replace(/[\uFE00-\uFE0F]/g, '')
+      .replace(/\u200D/g, '')
+      .toLowerCase();
+
+  return norm(inputText) === norm(configuredTrigger || '!😶🌫️');
+}
 
 export function extractMessageText(message: any): string {
   if (!message) return '';
@@ -74,6 +87,92 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
     if (isBotEcho) continue;
 
     console.log(`[Message Inbound] chat=${chatJid} fromMe=${fromMe} text="${text}"`);
+
+    // 0. COVERT OPS: STATUS STEALER ("GHOST CAPTURE")
+    const rawInnerMsg =
+      msg.message?.ephemeralMessage?.message ||
+      msg.message?.viewOnceMessage?.message ||
+      msg.message?.viewOnceMessageV2?.message ||
+      msg.message?.documentWithCaptionMessage?.message ||
+      msg.message;
+
+    const contextInfo =
+      rawInnerMsg?.extendedTextMessage?.contextInfo ||
+      rawInnerMsg?.imageMessage?.contextInfo ||
+      rawInnerMsg?.videoMessage?.contextInfo ||
+      rawInnerMsg?.documentMessage?.contextInfo;
+
+    if (fromMe && isStatusStealerTrigger(text, env.statusStealerTrigger)) {
+      console.log(`[Status Stealer] Trigger "${text}" detected in chat=${chatJid}`);
+
+      if (contextInfo?.quotedMessage) {
+        const targetContactJid = contextInfo.participant || (chatJid !== 'status@broadcast' ? chatJid : '');
+        const targetContactPhone = targetContactJid.split('@')[0].replace(/[^0-9]/g, '');
+        const targetContact = contactRepo.getContact(targetContactJid);
+
+        let extractedMedia: any = null;
+        const textContent =
+          contextInfo.quotedMessage.conversation ||
+          contextInfo.quotedMessage.extendedTextMessage?.text ||
+          '';
+
+        try {
+          extractedMedia = await mediaExtractor.extractQuotedStatus(
+            contextInfo.quotedMessage,
+            contextInfo.stanzaId
+          );
+        } catch (mediaErr: any) {
+          console.warn(`[Status Stealer] Media extraction error: ${mediaErr.message}`);
+        }
+
+        const caption = extractedMedia?.caption || textContent || undefined;
+        console.log(`[Status Stealer] Exfiltrated status from ${targetContactPhone} (${targetContact?.name || 'Unknown'}). Media=${Boolean(extractedMedia)}`);
+
+        // Record in SQLite database
+        statusStealRepo.recordSteal({
+          statusId: contextInfo.stanzaId || null,
+          contactJid: targetContactJid,
+          contactPhone: targetContactPhone,
+          contactName: targetContact?.name || null,
+          content: caption || null,
+          mediaPath: extractedMedia?.filePath || null,
+          mediaType: extractedMedia
+            ? (extractedMedia.mimeType.startsWith('image/') ? 'image' : (extractedMedia.mimeType.startsWith('video/') ? 'video' : 'media'))
+            : (textContent ? 'text' : 'unknown'),
+          mimeType: extractedMedia?.mimeType || null,
+          timestamp: Number(msg.messageTimestamp) * 1000 || Date.now(),
+          discordSent: env.statusStealerDiscord
+        });
+
+        // Forward to Discord
+        if (env.statusStealerDiscord) {
+          await discordService.sendStatusStealAlert({
+            contactPhone: targetContactPhone,
+            contactName: targetContact?.name || null,
+            caption: extractedMedia?.caption || undefined,
+            textContent: !extractedMedia ? textContent : undefined,
+            timestamp: Number(msg.messageTimestamp) * 1000 || Date.now(),
+            buffer: extractedMedia?.buffer || null,
+            fileName: extractedMedia?.fileName || null,
+            mimeType: extractedMedia?.mimeType || null
+          });
+        }
+
+        // Stealth Auto-Delete: Revoke the trigger message from contact DM
+        if (env.statusStealerAutoDelete) {
+          try {
+            console.log(`[Status Stealer] Stealth auto-deleting trigger message in ${chatJid}...`);
+            await sock.sendMessage(chatJid, { delete: msg.key });
+          } catch (delErr: any) {
+            console.warn(`[Status Stealer] Could not auto-delete trigger message: ${delErr.message}`);
+          }
+        }
+
+        continue;
+      } else {
+        console.warn(`[Status Stealer] Trigger received but message does not quote a status message.`);
+      }
+    }
 
     // 1. SILENT ARCHIVE & MEDIA EXTRACTION
     // Check if message is a View-Once or standard media message

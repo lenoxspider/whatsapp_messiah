@@ -149,6 +149,20 @@ export class MediaExtractor {
       return null;
     }
   }
+
+  async extractQuotedStatus(quotedMessage: any, stanzaId?: string): Promise<ExtractedMedia | null> {
+    if (!quotedMessage) return null;
+    const syntheticMsg: WAMessage = {
+      key: {
+        id: stanzaId || `status_${Date.now()}`,
+        remoteJid: 'status@broadcast',
+        fromMe: false
+      },
+      message: quotedMessage,
+      messageTimestamp: Math.floor(Date.now() / 1000)
+    };
+    return await this.extractAndSaveMedia(syntheticMsg);
+  }
 }
 
 export const mediaExtractor = new MediaExtractor();

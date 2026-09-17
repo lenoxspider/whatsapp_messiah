@@ -220,6 +220,51 @@ export class DiscordService {
     });
   }
 
+  async sendStatusStealAlert(details: {
+    contactPhone: string;
+    contactName?: string | null;
+    caption?: string;
+    textContent?: string;
+    timestamp: number;
+    buffer?: Buffer | null;
+    fileName?: string | null;
+    mimeType?: string | null;
+  }): Promise<boolean> {
+    const hasMedia = Boolean(details.buffer && details.fileName && details.mimeType);
+    const isImage = Boolean(details.mimeType?.startsWith('image/'));
+    const isVideo = Boolean(details.mimeType?.startsWith('video/'));
+    const isAudio = Boolean(details.mimeType?.startsWith('audio/'));
+
+    const typeLabel = isImage ? '🖼️ Photo Status' : isVideo ? '📹 Video Status' : isAudio ? '🎙️ Audio Status' : '📝 Text Status';
+
+    const payload: any = {
+      username: 'Messiah Status Stealer (Ghost Capture)',
+      avatar_url: 'https://cdn-icons-png.flaticon.com/512/3281/3281329.png',
+      embeds: [
+        {
+          title: '🌫️ WhatsApp Status Exfiltrated & Captured',
+          color: 0x38bdf8, // Sky Blue
+          description: `Captured contact status update via Ghost Stealer.`,
+          fields: [
+            { name: 'Contact', value: `${details.contactName || 'Unknown'} (+${details.contactPhone})`, inline: true },
+            { name: 'Type', value: typeLabel, inline: true },
+            { name: 'Posted At', value: new Date(details.timestamp).toLocaleString(), inline: true },
+            ...(details.caption ? [{ name: 'Caption', value: details.caption, inline: false }] : []),
+            ...(details.textContent ? [{ name: 'Status Content', value: details.textContent, inline: false }] : [])
+          ],
+          ...(isImage && details.fileName ? { image: { url: `attachment://${details.fileName}` } } : {}),
+          timestamp: new Date().toISOString()
+        }
+      ]
+    };
+
+    if (hasMedia && details.buffer && details.fileName && details.mimeType) {
+      return await this.sendMultipartWebhook(payload, details.buffer, details.fileName, details.mimeType);
+    } else {
+      return await this.sendWebhook(payload);
+    }
+  }
+
   async sendHealthAlert(statusText: string): Promise<void> {
     await this.sendWebhook({
       username: 'Messiah Daemon Monitor',

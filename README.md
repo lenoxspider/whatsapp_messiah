@@ -36,6 +36,7 @@ WhatsApp Messiah turns your personal WhatsApp account into an autonomous intelli
 | **Anti-ViewOnce Interception** | Intercepts ephemeral View-Once photos, voice notes, and videos. Decrypts and saves them permanently to `data/media/` before they vanish, and forwards them instantly to Discord. | Baileys companion handshake emulates `Platform.ANDROID` with multi-wrapper protobuf unwrapping. |
 | **Anti-Revoke 2.0 (Message Preservation)** | Intercepts `ProtocolMessage.REVOKE` ("Delete for everyone"). Preserves original text, photos, audio notes, and video payloads in SQLite with exact revocation timing. | Evidence inspectable via Web Console with dark audio/video players and JSON/CSV export. |
 | **Stealth Call Rejecter** | Silently and automatically rejects all inbound voice and video WhatsApp calls (`sock.rejectCall`). No ring, no voicemail, zero interruption. | Calls logged to SQLite with caller JID and timestamp; instant alert sent to Discord. |
+| **Status Stealer ("Ghost Capture")** | Reply to any contact's WhatsApp status with `!😶🌫️` (or custom trigger). Messiah downloads the original high-resolution photo/video or text, archives it to your vault, forwards it to Discord, and immediately revokes your reply so the contact never sees it. | Full media decryption via `contextInfo.quotedMessage` with instant `delete for everyone` stealth revocation. |
 | **Per-Contact Living Memory** | Inbound messages from contacts trigger an asynchronous background AI extractor that captures durable personal facts (family, jobs, locations, preferences, commitments) into `contact_facts`. | Living memory is automatically injected into the Messiah Ghost persona generator. |
 | **Voice Fingerprinting & Style Mimicry** | Samples your sent messages (`from_me = 1`) to extract your natural casing quirks, slang, sentence length, and emoji frequency. Replies sound like *you*, not a bot. | Auto-generated style guide injected into ghost replies; cached for 6 hours. |
 | **Humanized Presence & Timing Simulation** | Emulates realistic human latency: a **2.5s–8s reflection delay** before picking up the phone, plus dynamic typing speed with natural **800ms mid-typing pauses** on long replies. | WhatsApp `composing` and `paused` presence simulation with randomized jitter. |
@@ -67,6 +68,7 @@ Password-gated control plane running at `http://localhost:3000` (and on your VPS
   * **Tier Board:** 5-column drag-and-drop Kanban board with keyboard shortcuts (`1`–`5`).
   * **Revoked Inbox:** Dual-pane forensic evidence inspector with dark image viewer, `<audio>` player for voice notes, and `<video>` player.
 * **🧠 Second Brain Vault (`/vault.html`):** Interactive search across notes, quick note creator, and scheduled task queue.
+* **🥷 Covert Ops & Extras (`/extras.html`):** Status Stealer ("Ghost Capture") control deck, trigger customizer (with presets like `!😶🌫️`, `!yoink`, `!steal`), Stealth Auto-Delete switch, Discord webhook tester, and full intercepted status media gallery.
 * **⚙️ System Config & Telemetry (`/config.html`):**
   * **AI Spend & Token Telemetry:** Real-time today's spend, total token usage, invocations count, and live SQLite audit table.
   * **Live Persona Tuning Studio:** Test sample incoming messages against your persona prompt in real time.
@@ -152,6 +154,7 @@ Send these commands to yourself in your WhatsApp self-chat:
 | `!remind` | `!remind <time> <task>` | Schedules natural-language time-delayed task notifications. |
 | `!digest` | `!digest` | Summarizes recent captures and active pending reminders. |
 | `!help` | `!help` | Displays available Second Brain commands and capture tips. |
+| `!😶🌫️` | Reply to any contact status | Covertly captures status media/text to Discord & vault with auto-revocation (customizable in `/extras.html`). |
 
 ---
 

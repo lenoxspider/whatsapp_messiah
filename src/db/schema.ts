@@ -107,6 +107,22 @@ export function initializeDatabaseSchema(): void {
     );
 
     CREATE INDEX IF NOT EXISTS idx_llm_calls_timestamp ON llm_calls(timestamp);
+
+    CREATE TABLE IF NOT EXISTS captured_statuses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      status_id TEXT,
+      contact_jid TEXT NOT NULL,
+      contact_phone TEXT NOT NULL,
+      contact_name TEXT,
+      content TEXT,
+      media_path TEXT,
+      media_type TEXT,
+      mime_type TEXT,
+      timestamp INTEGER NOT NULL,
+      discord_sent INTEGER DEFAULT 1
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_captured_statuses_timestamp ON captured_statuses(timestamp);
   `);
 
   // Safe migration for existing SQLite database

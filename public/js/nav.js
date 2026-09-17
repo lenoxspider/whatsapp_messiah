@@ -53,6 +53,10 @@ function ensureIconRail(currentPath) {
         <span class="rail-icon">👥</span>
         <span class="rail-label">Contacts</span>
       </a>
+      <a href="/extras.html" class="rail-item ${currentPath.includes('extras') ? 'active' : ''}" title="Covert Ops & Extras">
+        <span class="rail-icon">🥷</span>
+        <span class="rail-label">Extras</span>
+      </a>
       <a href="/config.html" class="rail-item ${currentPath.includes('config') ? 'active' : ''}" title="System Config & Studio">
         <span class="rail-icon">⚙️</span>
         <span class="rail-label">Config</span>
