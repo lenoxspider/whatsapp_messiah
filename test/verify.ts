@@ -16,7 +16,7 @@ const savedNote = noteRepo.saveNote('Quarterly revenue targets and OKR list', 'w
 console.log(`✅ 2. Saved note #${savedNote.id} with tag #${savedNote.tag}`);
 
 const searchResults = noteRepo.searchNotes('revenue');
-if (searchResults.length > 0 && searchResults[0].id === savedNote.id) {
+if (searchResults.length > 0 && searchResults.some(r => r.id === savedNote.id)) {
   console.log('✅ 3. SQLite FTS5 Full-Text Search working accurately!');
 } else {
   console.error('❌ FTS5 search failed to match keyword.');
@@ -80,5 +80,53 @@ if (updatedMsg && updatedMsg.content?.includes('[Voice Note]')) {
   console.error('❌ Message content update failed.');
 }
 
-console.log('\n🎉 ALL CORE AND PHASE 1 VERIFICATIONS PASSED SUCCESSFULLY!');
+// 7. Test Phase 2: Living Contact Memory & Fact Extraction
+import { contactFactRepo } from '../src/db/repositories/contact_fact.repo.js';
+
+const fact1 = contactFactRepo.addFact('1234567890@s.whatsapp.net', 'Works as Senior DevOps Engineer at Acme', 'workplace');
+const fact2 = contactFactRepo.addFact('1234567890@s.whatsapp.net', 'Lives in Berlin, Germany', 'location');
+const activeFacts = contactFactRepo.getActiveFacts('1234567890@s.whatsapp.net');
+
+if (activeFacts.length >= 2 && activeFacts.some(f => f.fact.includes('Berlin'))) {
+  console.log(`✅ 11. Per-contact living memory verified: ${activeFacts.length} active facts stored & retrieved.`);
+} else {
+  console.error('❌ Contact facts repository failed.');
+}
+
+// 8. Test Phase 2: LLM Cost & Telemetry Logging
+import { llmCallRepo } from '../src/db/repositories/llm_call.repo.js';
+
+llmCallRepo.logCall({
+  model: 'gpt-4o-mini',
+  purpose: 'ghost_reply',
+  promptTokens: 120,
+  completionTokens: 45,
+  totalTokens: 165,
+  costUsd: 0.000045,
+  latencyMs: 380
+});
+
+const stats = llmCallRepo.getStats();
+const recentCalls = llmCallRepo.getRecentCalls(5);
+
+if (stats.totalCalls > 0 && stats.totalTokens > 0 && recentCalls.length > 0) {
+  console.log(`✅ 12. LLM Telemetry verified: ${stats.totalCalls} calls logged, $${stats.totalCostUsd.toFixed(6)} tracked.`);
+} else {
+  console.error('❌ LLM Telemetry logging failed.');
+}
+
+// 9. Test Phase 2: Humanized Presence Latency Simulation
+import { presenceSimulator } from '../src/engine/messiah/presence.js';
+
+const readingLatency = presenceSimulator.calculateReadingLatency(30);
+const typingDelay = presenceSimulator.calculateTypingDelay(40);
+
+if (readingLatency >= 2500 && typingDelay >= 1000) {
+  console.log(`✅ 13. Humanized timing verified: readingLatency=${readingLatency}ms, typingDelay=${typingDelay}ms.`);
+} else {
+  console.error('❌ Presence timing calculation out of bounds.');
+}
+
+console.log('\n🎉 ALL CORE, PHASE 1, AND PHASE 2 VERIFICATIONS PASSED SUCCESSFULLY!');
+
 

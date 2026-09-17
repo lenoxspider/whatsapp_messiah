@@ -80,6 +80,33 @@ export function initializeDatabaseSchema(): void {
     );
 
     CREATE INDEX IF NOT EXISTS idx_calls_timestamp ON calls(timestamp);
+
+    CREATE TABLE IF NOT EXISTS contact_facts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      jid TEXT NOT NULL,
+      fact TEXT NOT NULL,
+      category TEXT DEFAULT 'general',
+      confidence REAL DEFAULT 1.0,
+      source_msg_id TEXT,
+      created_at INTEGER NOT NULL,
+      superseded_by INTEGER
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_contact_facts_jid ON contact_facts(jid);
+
+    CREATE TABLE IF NOT EXISTS llm_calls (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      model TEXT NOT NULL,
+      purpose TEXT NOT NULL,
+      prompt_tokens INTEGER DEFAULT 0,
+      completion_tokens INTEGER DEFAULT 0,
+      total_tokens INTEGER DEFAULT 0,
+      cost_usd REAL DEFAULT 0.0,
+      latency_ms INTEGER DEFAULT 0,
+      timestamp INTEGER NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_llm_calls_timestamp ON llm_calls(timestamp);
   `);
 
   // Safe migration for existing SQLite database

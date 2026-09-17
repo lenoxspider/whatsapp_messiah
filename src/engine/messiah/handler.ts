@@ -13,7 +13,41 @@ import { presenceSimulator } from './presence.js';
 import { openaiService } from '../../services/openai.service.js';
 import { env } from '../../config/env.js';
 
+import { contactFactRepo } from '../../db/repositories/contact_fact.repo.js';
+
+let cachedVoiceProfile: string = '';
+let lastVoiceProfileFetch: number = 0;
+
 export class MessiahHandler {
+  private async getVoiceProfile(): Promise<string> {
+    const now = Date.now();
+    // Cache for 6 hours
+    if (cachedVoiceProfile && now - lastVoiceProfileFetch < 6 * 60 * 60 * 1000) {
+      return cachedVoiceProfile;
+    }
+
+    try {
+      const db = getDatabase();
+      const rows = db.prepare(`
+        SELECT content FROM messages
+        WHERE from_me = 1 AND content IS NOT NULL AND content != ''
+        ORDER BY timestamp DESC
+        LIMIT 35
+      `).all() as Array<{ content: string }>;
+
+      if (rows.length >= 5) {
+        const samples = rows.map(r => r.content);
+        const profile = await openaiService.analyzeVoiceProfile(samples);
+        if (profile) {
+          cachedVoiceProfile = profile;
+          lastVoiceProfileFetch = now;
+        }
+      }
+    } catch {}
+
+    return cachedVoiceProfile;
+  }
+
   async handleContactMessage(sock: WASocket, message: IncomingMessageContext): Promise<void> {
     const contact = contactRepo.upsertContact(
       message.senderJid,
@@ -21,7 +55,19 @@ export class MessiahHandler {
       message.raw?.pushName
     );
 
-    // 1. Check for emergency escalation triggers across all tiers
+    // 1. Asynchronous Background Fact Extraction (Non-blocking memory consolidation)
+    if (openaiService.isConfigured() && contact.tier <= ContactTier.TIER3_BUSINESS && message.text) {
+      openaiService.extractFacts(message.text, contact.name).then(facts => {
+        if (facts && facts.length > 0) {
+          for (const item of facts) {
+            contactFactRepo.addFact(contact.jid, item.fact, item.category, 1.0, message.id);
+            systemLogger.info('Memory', `Learned fact for ${contact.name || contact.phone}: "${item.fact}" [${item.category}]`);
+          }
+        }
+      }).catch(() => {});
+    }
+
+    // 2. Check for emergency escalation triggers across all tiers
     const urgencyReason = escalationDetector.checkUrgency(message);
     if (urgencyReason) {
       systemLogger.warn('Escalation', `Urgent trigger from ${contact.name || contact.phone}: "${message.text}"`);
@@ -29,15 +75,15 @@ export class MessiahHandler {
       return; // Hold reply for owner's manual review
     }
 
-    // 2. Selective deafness: control read receipts (blue vs grey ticks)
+    // 3. Selective deafness: control read receipts (blue vs grey ticks)
     await selectiveDeafness.applyReadReceipt(sock, message.raw.key, contact.tier);
 
-    // 3. Autonomous Ghost Switch & LLM Availability
+    // 4. Autonomous Ghost Switch & LLM Availability
     if (!env.ghostHandlerEnabled || !env.autonomousGhost || !env.openaiApiKey) {
       return; // Autonomous replies disabled or OpenAI key not set
     }
 
-    // 4. Time Awareness & Sleep Simulation:
+    // 5. Time Awareness & Sleep Simulation:
     // Between 11:30 PM and 7:00 AM, suppress automated replies to acquaintances & strangers
     const currentHour = new Date().getHours();
     const isQuietHours = currentHour >= 23 || currentHour < 7;
@@ -46,7 +92,7 @@ export class MessiahHandler {
       return;
     }
 
-    // 5. Anti-Revoke Intelligence: Check if contact deleted messages in this chat
+    // 6. Anti-Revoke Intelligence: Check if contact deleted messages in this chat
     let revokedCount = 0;
     try {
       const db = getDatabase();
@@ -54,7 +100,7 @@ export class MessiahHandler {
       revokedCount = row?.count || 0;
     } catch {}
 
-    // 6. Vault Bridging: Pull user's relevant notes for Inner Circle / Acquaintances
+    // 7. Vault Bridging: Pull user's relevant notes for Inner Circle / Acquaintances
     let vaultContext = '';
     if (contact.tier <= ContactTier.TIER2_ACQUAINTANCE) {
       const relevantNotes = noteRepo.searchNotesAdvanced(message.text, 2);
@@ -63,14 +109,17 @@ export class MessiahHandler {
       }
     }
 
-    // 7. Retrieve recent chat history for conversational continuity
+    // 8. Retrieve recent chat history for conversational continuity
     const history = messageRepo.getRecentChatHistory(message.chatJid, 6);
     const formattedHistory = history
       .map(m => `${m.from_me ? 'Me' : contact.name || 'Them'}: ${m.content || '[Media]'}`)
       .join('\n');
 
-    // 8. Build tier-specific system prompt
-    const systemPrompt = personaEngine.buildSystemPrompt(contact, formattedHistory, vaultContext, revokedCount);
+    // 9. Fetch Operator's Voice Profile (if available)
+    const voiceProfile = await this.getVoiceProfile();
+
+    // 10. Build tier-specific system prompt with active living memory
+    const systemPrompt = personaEngine.buildSystemPrompt(contact, formattedHistory, vaultContext, revokedCount, voiceProfile);
     if (!systemPrompt) {
       return; // IGNORE tier or persona suppressed
     }
@@ -89,7 +138,7 @@ export class MessiahHandler {
 
       if (reply) {
         systemLogger.success('Ghost', `Autonomous reply dispatched to ${contact.name || contact.phone} (Tier ${contact.tier})`);
-        await presenceSimulator.simulateTypingAndSend(sock, message.chatJid, reply);
+        await presenceSimulator.simulateTypingAndSend(sock, message.chatJid, reply, message.text.length);
       }
     } catch (err: any) {
       systemLogger.error('Ghost', `Reply error for ${contact.name || contact.phone}: ${err.message}`);

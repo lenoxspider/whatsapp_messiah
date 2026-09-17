@@ -8,6 +8,7 @@ import { vaultRouter } from './routes/vault.route.js';
 import { contactsRouter } from './routes/contacts.route.js';
 import { messagesRouter } from './routes/messages.route.js';
 import { mediaRouter } from './routes/media.route.js';
+import { llmRouter } from './routes/llm.route.js';
 import { authMiddleware } from './middleware/auth.middleware.js';
 
 export function createDashboardServer(): express.Express {
@@ -41,6 +42,7 @@ export function createDashboardServer(): express.Express {
   app.use('/api/contacts', contactsRouter);
   app.use('/api/messages', messagesRouter);
   app.use('/api/media', mediaRouter);
+  app.use('/api/llm', llmRouter);
 
   return app;
 }

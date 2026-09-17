@@ -1,11 +1,13 @@
 import { ContactTier, type ContactRecord } from '../../types/contact.js';
+import { contactFactRepo } from '../../db/repositories/contact_fact.repo.js';
 
 export class PersonaEngine {
   buildSystemPrompt(
     contact: ContactRecord, 
     chatHistoryFormatted: string,
     vaultContext: string = '',
-    revokedCount: number = 0
+    revokedCount: number = 0,
+    voiceProfile: string = ''
   ): string | null {
     if (contact.tier === ContactTier.IGNORE) {
       return null; // Never reply
@@ -15,27 +17,31 @@ export class PersonaEngine {
       return contact.custom_persona;
     }
 
-    // Parse known facts about this contact
+    // Pull living facts from contact_facts repository
+    const activeFacts = contactFactRepo.getActiveFacts(contact.jid, 10);
     let factsSection = '';
-    if (contact.facts_json) {
+    if (activeFacts.length > 0) {
+      factsSection = `\nKnown personal facts & memories about ${contact.name || 'this contact'}:\n` +
+        activeFacts.map(f => `• [${f.category}] ${f.fact}`).join('\n');
+    } else if (contact.facts_json) {
       try {
         const facts = JSON.parse(contact.facts_json);
         if (Array.isArray(facts) && facts.length > 0) {
           factsSection = `\nKnown facts about this person:\n` + facts.map(f => `• ${f}`).join('\n');
-        } else if (typeof facts === 'object') {
-          factsSection = `\nKnown facts about this person:\n` + Object.entries(facts).map(([k, v]) => `• ${k}: ${v}`).join('\n');
         }
-      } catch {
-        factsSection = `\nContext on this contact: ${contact.facts_json}`;
-      }
+      } catch {}
     }
 
     const intelSection = revokedCount > 0 
-      ? `\nIntel: This person has recently deleted/revoked ${revokedCount} message(s) in your chat.`
+      ? `\nForensic Intel: This person recently revoked/deleted ${revokedCount} message(s) in your chat.`
       : '';
 
     const vaultSection = vaultContext
       ? `\nRelevant background context from your personal notes (use naturally only if directly relevant, do not recite like a robot):\n${vaultContext}`
+      : '';
+
+    const voiceSection = voiceProfile
+      ? `\nOPERATOR'S PERSONAL TEXTING FINGERPRINT:\n${voiceProfile}\nFollow this exact cadence, slang, and casing rhythm strictly.`
       : '';
 
     const baseDirectives = `
@@ -43,7 +49,7 @@ CORE HUMAN TEXTING RULES:
 - Write exactly like a real person texting from their phone: casual, concise, natural lowercase, occasional contractions.
 - NEVER start with AI clichés ("Certainly!", "Sure thing!", "I hope this helps", "Hello there!").
 - Keep replies to 1-3 short sentences. Match their texting energy.
-${factsSection}${intelSection}${vaultSection}`;
+${voiceSection}${factsSection}${intelSection}${vaultSection}`;
 
     switch (contact.tier) {
       case ContactTier.TIER1_INNER:

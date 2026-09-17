@@ -105,6 +105,19 @@ export const AGENT_TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
   }
 ];
 
+import { llmCallRepo } from '../db/repositories/llm_call.repo.js';
+
+function calculateCost(model: string, promptTokens: number, completionTokens: number): number {
+  if (model.includes('gpt-4o-mini')) {
+    return (promptTokens / 1_000_000) * 0.15 + (completionTokens / 1_000_000) * 0.60;
+  } else if (model.includes('gpt-4o')) {
+    return (promptTokens / 1_000_000) * 2.50 + (completionTokens / 1_000_000) * 10.00;
+  } else if (model.includes('whisper')) {
+    return 0.006;
+  }
+  return (promptTokens / 1_000_000) * 0.50 + (completionTokens / 1_000_000) * 1.50;
+}
+
 class OpenAIService {
   private client: OpenAI | null = null;
 
@@ -134,6 +147,7 @@ class OpenAIService {
     history: Array<{ role: 'user' | 'assistant'; content: string }> = []
   ): Promise<string> {
     const client = this.getClient();
+    const startTime = Date.now();
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       { role: 'system', content: systemPrompt },
@@ -148,6 +162,22 @@ class OpenAIService {
       max_tokens: 300
     });
 
+    const latency = Date.now() - startTime;
+    const promptTokens = response.usage?.prompt_tokens || 0;
+    const completionTokens = response.usage?.completion_tokens || 0;
+    const totalTokens = response.usage?.total_tokens || (promptTokens + completionTokens);
+    const cost = calculateCost(env.openaiModel, promptTokens, completionTokens);
+
+    llmCallRepo.logCall({
+      model: env.openaiModel,
+      purpose: 'ghost_reply',
+      promptTokens,
+      completionTokens,
+      totalTokens,
+      costUsd: cost,
+      latencyMs: latency
+    });
+
     return response.choices[0]?.message?.content?.trim() || '';
   }
 
@@ -157,11 +187,24 @@ class OpenAIService {
     mimeType: string = 'audio/ogg'
   ): Promise<string> {
     const client = this.getClient();
+    const startTime = Date.now();
     const file = await toFile(buffer, fileName, { type: mimeType });
     const response = await client.audio.transcriptions.create({
       file,
       model: 'whisper-1'
     });
+
+    const latency = Date.now() - startTime;
+    llmCallRepo.logCall({
+      model: 'whisper-1',
+      purpose: 'whisper_transcription',
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      costUsd: 0.006,
+      latencyMs: latency
+    });
+
     return response.text?.trim() || '';
   }
 
@@ -171,6 +214,10 @@ class OpenAIService {
   ): Promise<string> {
     const client = this.getClient();
     const nowIso = new Date().toISOString();
+    const startTime = Date.now();
+
+    let totalPromptTokens = 0;
+    let totalCompletionTokens = 0;
 
     const systemPrompt = `You are WhatsApp Messiah: the operator's personal Second Brain intelligence agent.
 Current UTC time: ${nowIso}.
@@ -204,6 +251,11 @@ SECURITY & INTEGRITY DIRECTIVES:
         temperature: 0.2
       });
 
+      if (response.usage) {
+        totalPromptTokens += response.usage.prompt_tokens;
+        totalCompletionTokens += response.usage.completion_tokens;
+      }
+
       const choice = response.choices[0];
       if (!choice || !choice.message) {
         return 'No response generated.';
@@ -213,6 +265,18 @@ SECURITY & INTEGRITY DIRECTIVES:
       messages.push(assistantMsg);
 
       if (!assistantMsg.tool_calls || assistantMsg.tool_calls.length === 0) {
+        const latency = Date.now() - startTime;
+        const cost = calculateCost(env.openaiModel, totalPromptTokens, totalCompletionTokens);
+        llmCallRepo.logCall({
+          model: env.openaiModel,
+          purpose: 'agent_interaction',
+          promptTokens: totalPromptTokens,
+          completionTokens: totalCompletionTokens,
+          totalTokens: totalPromptTokens + totalCompletionTokens,
+          costUsd: cost,
+          latencyMs: latency
+        });
+
         return assistantMsg.content?.trim() || '';
       }
 
@@ -241,7 +305,105 @@ SECURITY & INTEGRITY DIRECTIVES:
       }
     }
 
+    const latency = Date.now() - startTime;
+    const cost = calculateCost(env.openaiModel, totalPromptTokens, totalCompletionTokens);
+    llmCallRepo.logCall({
+      model: env.openaiModel,
+      purpose: 'agent_interaction',
+      promptTokens: totalPromptTokens,
+      completionTokens: totalCompletionTokens,
+      totalTokens: totalPromptTokens + totalCompletionTokens,
+      costUsd: cost,
+      latencyMs: latency
+    });
+
     return 'Agent reached maximum tool call iterations.';
+  }
+
+  async extractFacts(
+    text: string,
+    senderName?: string | null
+  ): Promise<Array<{ fact: string; category: string }>> {
+    if (!this.isConfigured() || !text || text.trim().length < 8) return [];
+    const client = this.getClient();
+    const startTime = Date.now();
+
+    const systemPrompt = `You are a background fact extractor for a personal messaging system.
+Analyze the inbound WhatsApp message from ${senderName || 'this contact'}.
+Extract durable, long-term personal facts about them:
+- Family/relationships (e.g. "has a sister named Sarah")
+- Location/home (e.g. "lives in Frankfurt", "moving to London")
+- Workplace/role (e.g. "software engineer at Acme", "looking for a new job")
+- Commitments & plans (e.g. "visiting Ghana next Friday", "planning wedding in December")
+- Specific preferences (e.g. "doesn't drink coffee", "supports Chelsea FC")
+
+Do NOT extract transient trivial chat ("said good morning", "is eating lunch now").
+Return valid JSON:
+{"facts": [{"fact": "lives in Berlin", "category": "location"}]}
+If no durable facts are present, return:
+{"facts": []}`;
+
+    try {
+      const response = await client.chat.completions.create({
+        model: env.openaiModel,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: text }
+        ],
+        temperature: 0.1,
+        response_format: { type: 'json_object' }
+      });
+
+      const latency = Date.now() - startTime;
+      const promptTokens = response.usage?.prompt_tokens || 0;
+      const completionTokens = response.usage?.completion_tokens || 0;
+      const cost = calculateCost(env.openaiModel, promptTokens, completionTokens);
+
+      llmCallRepo.logCall({
+        model: env.openaiModel,
+        purpose: 'fact_extraction',
+        promptTokens,
+        completionTokens,
+        totalTokens: promptTokens + completionTokens,
+        costUsd: cost,
+        latencyMs: latency
+      });
+
+      const parsed = JSON.parse(response.choices[0]?.message?.content || '{}');
+      return Array.isArray(parsed.facts) ? parsed.facts : [];
+    } catch {
+      return [];
+    }
+  }
+
+  async analyzeVoiceProfile(sentSamples: string[]): Promise<string> {
+    if (!this.isConfigured() || sentSamples.length === 0) return '';
+    const client = this.getClient();
+
+    const systemPrompt = `Analyze these real sent messages from the user to determine their personal texting fingerprint.
+Identify:
+1. Typical sentence length and punctuation habits (e.g., rarely use periods, all lowercase start)
+2. Favorite casual words, slang, or phrasing
+3. Emoji habits (frequent, rare, specific ones)
+4. Overall tone (relaxed, concise, dry, warm)
+
+Provide a 3-4 sentence concise texting style guide that an AI can use to sound exactly like this user.`;
+
+    try {
+      const response = await client.chat.completions.create({
+        model: env.openaiModel,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: sentSamples.join('\n---\n') }
+        ],
+        temperature: 0.3,
+        max_tokens: 250
+      });
+
+      return response.choices[0]?.message?.content?.trim() || '';
+    } catch {
+      return '';
+    }
   }
 
   async askSecondBrain(query: string, contextualNotes: string = ''): Promise<string> {

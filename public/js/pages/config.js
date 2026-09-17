@@ -289,7 +289,48 @@ Style Guidelines:
     }
   });
 
+  // Load Telemetry Stats & Live Invocations Log
+  async function loadTelemetry() {
+    try {
+      const stats = await apiRequest('/api/llm/stats');
+      const totalSpendEl = document.getElementById('telemetry-total-spend');
+      const todayCostEl = document.getElementById('stat-today-cost');
+      const totalTokensEl = document.getElementById('stat-total-tokens');
+      const totalCallsEl = document.getElementById('stat-total-calls');
+
+      if (totalSpendEl) totalSpendEl.textContent = `$${(stats.totalCostUsd || 0).toFixed(4)}`;
+      if (todayCostEl) todayCostEl.textContent = `$${(stats.todayCostUsd || 0).toFixed(4)}`;
+      if (totalTokensEl) totalTokensEl.textContent = (stats.totalTokens || 0).toLocaleString();
+      if (totalCallsEl) totalCallsEl.textContent = (stats.totalCalls || 0).toLocaleString();
+
+      const recent = await apiRequest('/api/llm/recent?limit=15');
+      const tableBody = document.getElementById('telemetry-table-body');
+      if (tableBody && recent.calls) {
+        if (recent.calls.length === 0) {
+          tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 0.75rem; color: var(--text-dim);">No LLM calls recorded yet.</td></tr>';
+        } else {
+          tableBody.innerHTML = recent.calls.map(c => {
+            const purposeBadge = `<span class="delta-badge" style="font-size: 0.68rem;">${c.purpose}</span>`;
+            const modelShort = c.model.replace('gpt-4o-mini', '4o-mini').replace('gpt-4o', '4o');
+            return `
+              <tr style="border-bottom: 1px solid var(--border-subtle);">
+                <td style="padding: 0.35rem 0.4rem;">${purposeBadge}</td>
+                <td style="padding: 0.35rem 0.4rem; color: var(--text-muted);">${modelShort}</td>
+                <td style="padding: 0.35rem 0.4rem; text-align: right; color: var(--accent-blue);">${c.total_tokens || 0}</td>
+                <td style="padding: 0.35rem 0.4rem; text-align: right; color: var(--text-muted);">${c.latency_ms || 0}ms</td>
+                <td style="padding: 0.35rem 0.4rem; text-align: right; color: var(--accent-green);">$${(c.cost_usd || 0).toFixed(4)}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+      }
+    } catch {}
+  }
+
+  document.getElementById('btn-refresh-telemetry')?.addEventListener('click', loadTelemetry);
+
   loadConfig();
+  loadTelemetry();
 }
 
 document.addEventListener('DOMContentLoaded', initConfigPage);

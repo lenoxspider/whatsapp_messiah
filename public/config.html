@@ -231,6 +231,54 @@
           </div>
         </div>
 
+        <!-- AI Spend & Token Telemetry -->
+        <div class="pane-surface">
+          <div class="pane-header">
+            <span class="pane-title">📊 AI Spend &amp; Token Telemetry</span>
+            <span id="telemetry-total-spend" class="delta-badge" style="color: var(--accent-green);">$0.0000</span>
+          </div>
+          <div style="padding: 1rem; display: flex; flex-direction: column; gap: 0.85rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.6rem; text-align: center;">
+              <div style="background: var(--bg-elevated); padding: 0.5rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Today's Cost</div>
+                <div id="stat-today-cost" class="tabular-nums" style="font-size: 1rem; font-weight: 700; color: var(--accent-green); font-family: var(--font-mono);">$0.0000</div>
+              </div>
+              <div style="background: var(--bg-elevated); padding: 0.5rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Total Tokens</div>
+                <div id="stat-total-tokens" class="tabular-nums" style="font-size: 1rem; font-weight: 700; color: var(--accent-blue); font-family: var(--font-mono);">0</div>
+              </div>
+              <div style="background: var(--bg-elevated); padding: 0.5rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Total Invocations</div>
+                <div id="stat-total-calls" class="tabular-nums" style="font-size: 1rem; font-weight: 700; color: var(--accent-purple); font-family: var(--font-mono);">0</div>
+              </div>
+            </div>
+
+            <div style="font-size: 0.75rem; color: var(--text-dim); display: flex; justify-content: space-between; align-items: center;">
+              <span>Recent Model Activity (Live SQLite Log)</span>
+              <button type="button" id="btn-refresh-telemetry" style="background: none; border: none; color: var(--accent-blue); cursor: pointer; font-size: 0.75rem;">↻ Refresh</button>
+            </div>
+
+            <div style="overflow-x: auto; max-height: 170px; overflow-y: auto;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 0.75rem; font-family: var(--font-mono);">
+                <thead>
+                  <tr style="border-bottom: 1px solid var(--border-subtle); color: var(--text-muted); text-align: left;">
+                    <th style="padding: 0.35rem 0.4rem;">Purpose</th>
+                    <th style="padding: 0.35rem 0.4rem;">Model</th>
+                    <th style="padding: 0.35rem 0.4rem; text-align: right;">Tokens</th>
+                    <th style="padding: 0.35rem 0.4rem; text-align: right;">Latency</th>
+                    <th style="padding: 0.35rem 0.4rem; text-align: right;">Cost</th>
+                  </tr>
+                </thead>
+                <tbody id="telemetry-table-body">
+                  <tr>
+                    <td colspan="5" style="text-align: center; padding: 0.75rem; color: var(--text-dim);">No LLM calls recorded yet.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
       </div>
 
     </div>
