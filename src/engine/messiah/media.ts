@@ -23,15 +23,8 @@ export class MediaExtractor {
   }
 
   isViewOnceMessage(msg: WAMessage): boolean {
-    const m = msg.message;
-    if (!m) return false;
-    return Boolean(
-      m.viewOnceMessage ||
-      m.viewOnceMessageV2 ||
-      m.viewOnceMessageV2Extension ||
-      (m.ephemeralMessage?.message?.viewOnceMessage) ||
-      (m.ephemeralMessage?.message?.viewOnceMessageV2)
-    );
+    const { isViewOnce } = this.unwrapMessage(msg);
+    return isViewOnce;
   }
 
   unwrapMessage(msg: WAMessage): { innerMessage: any; isViewOnce: boolean } {
@@ -55,6 +48,16 @@ export class MediaExtractor {
 
     if (m?.documentWithCaptionMessage?.message) {
       m = m.documentWithCaptionMessage.message;
+    }
+
+    // Modern WhatsApp flags viewOnce inside imageMessage, videoMessage, audioMessage
+    if (
+      Boolean(m?.imageMessage?.viewOnce) ||
+      Boolean(m?.videoMessage?.viewOnce) ||
+      Boolean(m?.audioMessage?.viewOnce) ||
+      Boolean((m as any)?.viewOnce)
+    ) {
+      isViewOnce = true;
     }
 
     return { innerMessage: m, isViewOnce };

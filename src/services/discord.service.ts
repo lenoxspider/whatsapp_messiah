@@ -159,6 +159,41 @@ export class DiscordService {
     await this.sendMultipartWebhook(payload, details.buffer, details.fileName, details.mimeType);
   }
 
+  async sendIncomingMediaAlert(details: {
+    senderPhone: string;
+    senderName?: string | null;
+    caption?: string;
+    timestamp: number;
+    buffer: Buffer;
+    fileName: string;
+    mimeType: string;
+  }): Promise<void> {
+    const isImage = details.mimeType.startsWith('image/');
+    const isAudio = details.mimeType.startsWith('audio/');
+    const isVideo = details.mimeType.startsWith('video/');
+
+    const payload: any = {
+      username: 'Messiah Sentinel (Media Telemetry)',
+      avatar_url: 'https://cdn-icons-png.flaticon.com/512/3342/3342137.png',
+      embeds: [
+        {
+          title: `📥 Inbound ${isImage ? 'Photo' : (isAudio ? 'Voice Note' : (isVideo ? 'Video' : 'Document'))} Captured`,
+          color: 0x1d9e75, // Green
+          description: `Captured media received and archived from contact.`,
+          fields: [
+            { name: 'Sender', value: `${details.senderName || 'Unknown'} (+${details.senderPhone})`, inline: true },
+            { name: 'Media Type', value: isImage ? '🖼️ Photo' : (isAudio ? '🎙️ Audio' : (isVideo ? '📹 Video' : '📎 Document')), inline: true },
+            { name: 'Caption', value: details.caption || '[No caption]', inline: false }
+          ],
+          ...(isImage ? { image: { url: `attachment://${details.fileName}` } } : {}),
+          timestamp: new Date().toISOString()
+        }
+      ]
+    };
+
+    await this.sendMultipartWebhook(payload, details.buffer, details.fileName, details.mimeType);
+  }
+
   async sendCallAlert(details: {
     callerPhone: string;
     callerName?: string | null;

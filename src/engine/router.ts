@@ -98,19 +98,32 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
 
       messageRepo.updateMedia(msgId, extracted.filePath, extracted.mimeType, extracted.isViewOnce);
 
-      // If View-Once is intercepted and from someone else, immediately alert via Discord
-      if (extracted.isViewOnce && !fromMe && env.forwardMediaToDiscord) {
-        console.log(`[Anti-ViewOnce] Ephemeral message from ${senderPhone} decrypted and preserved.`);
+      // If media is from someone else and Discord forwarding is enabled:
+      if (!fromMe && env.forwardMediaToDiscord) {
         const contact = contactRepo.getContact(senderJid);
-        await discordService.sendViewOnceAlert({
-          senderPhone,
-          senderName: contact?.name || null,
-          caption: extracted.caption || text || undefined,
-          timestamp: Number(msg.messageTimestamp) * 1000 || Date.now(),
-          buffer: extracted.buffer,
-          fileName: extracted.fileName,
-          mimeType: extracted.mimeType
-        });
+        if (extracted.isViewOnce) {
+          console.log(`[Anti-ViewOnce] Ephemeral View-Once from ${senderPhone} decrypted, forwarding immediately to Discord.`);
+          await discordService.sendViewOnceAlert({
+            senderPhone,
+            senderName: contact?.name || null,
+            caption: extracted.caption || text || undefined,
+            timestamp: Number(msg.messageTimestamp) * 1000 || Date.now(),
+            buffer: extracted.buffer,
+            fileName: extracted.fileName,
+            mimeType: extracted.mimeType
+          });
+        } else {
+          console.log(`[Media Inbound] Media from ${senderPhone} saved to ${extracted.fileName}, forwarding to Discord.`);
+          await discordService.sendIncomingMediaAlert({
+            senderPhone,
+            senderName: contact?.name || null,
+            caption: extracted.caption || text || undefined,
+            timestamp: Number(msg.messageTimestamp) * 1000 || Date.now(),
+            buffer: extracted.buffer,
+            fileName: extracted.fileName,
+            mimeType: extracted.mimeType
+          });
+        }
       }
     }).catch(err => {
       console.warn(`[Media Extraction Error] ${msgId}: ${err.message}`);
