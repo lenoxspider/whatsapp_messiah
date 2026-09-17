@@ -270,16 +270,17 @@ extrasRouter.post('/factory-reset', async (req, res) => {
       }
     }
 
-    // 5. Purge Baileys sessions directory completely
+    // 5. Purge Baileys sessions directory completely (including creds.json)
     const sDir = path.resolve(env.sessionsDir);
-    if (fs.existsSync(sDir)) {
-      try {
+    try {
+      // Delete entire dir so no stale creds.json survives, then recreate empty
+      if (fs.existsSync(sDir)) {
         fs.rmSync(sDir, { recursive: true, force: true });
-        fs.mkdirSync(sDir, { recursive: true });
-        console.log('[Factory Reset] Sessions cleared.');
-      } catch (sErr) {
-        console.warn('[Factory Reset] Could not clear sessions dir:', sErr);
       }
+      fs.mkdirSync(sDir, { recursive: true });
+      console.log('[Factory Reset] Sessions and credentials fully cleared.');
+    } catch (sErr) {
+      console.warn('[Factory Reset] Could not clear sessions dir:', sErr);
     }
 
     res.json({

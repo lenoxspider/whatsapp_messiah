@@ -35,19 +35,33 @@ pairingRouter.post('/code', async (req, res) => {
     return res.status(503).json({ error: 'WhatsApp socket is not initialized. Please wait a moment.' });
   }
 
-  try {
-    console.log(`[Pairing] Requesting 8-digit pairing code for sanitized phone: +${cleanPhone}`);
-    const code = await dashboardState.requestPairingCodeFn(cleanPhone);
-    const formatted = code?.match(/.{1,4}/g)?.join('-') || code;
-    dashboardState.setPairingCode(formatted);
-    dashboardState.setPairedPhone(cleanPhone);
+  // Retry up to 8 times over 24 seconds — the socket reconnects every ~4s after reset.
+  // We wait for a fresh connection window before requesting the code.
+  const MAX_RETRIES = 8;
+  const RETRY_DELAY_MS = 3000;
 
-    res.json({ success: true, code: formatted });
-  } catch (err: any) {
-    console.error('[Pairing Route] Failed to request pairing code:', err.message);
-    res.status(500).json({
-      error: err.message || 'Failed to request pairing code from WhatsApp.'
-    });
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      console.log(`[Pairing] Requesting 8-digit pairing code for sanitized phone: +${cleanPhone} (attempt ${attempt}/${MAX_RETRIES})`);
+      const code = await dashboardState.requestPairingCodeFn(cleanPhone);
+      const formatted = code?.match(/.{1,4}/g)?.join('-') || code;
+      dashboardState.setPairingCode(formatted);
+      dashboardState.setPairedPhone(cleanPhone);
+      return res.json({ success: true, code: formatted });
+    } catch (err: any) {
+      const errMsg: string = err.message || '';
+      const isTransient = errMsg.includes('Connection Closed') || errMsg.includes('Timed Out') || errMsg.includes('Connection Lost');
+      console.warn(`[Pairing Route] Attempt ${attempt} failed: ${errMsg}`);
+
+      if (!isTransient || attempt === MAX_RETRIES) {
+        return res.status(500).json({
+          error: `Failed to get pairing code after ${attempt} attempts: ${errMsg}`
+        });
+      }
+
+      // Wait for the next reconnection cycle before retrying
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+    }
   }
 });
 
