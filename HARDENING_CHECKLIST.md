@@ -20,10 +20,10 @@
 - [x] **Search Index Isolation**: Status items are isolated in `captured_statuses` and excluded from Second Brain RAG search context by default.
 
 ### 3. ⏰ Scheduler State Machine & Crash Recovery
-- [ ] **Atomic Claim State Machine**: Upgrade `reminders` DB schema to use explicit status states: `pending` ➔ `claimed` ➔ `sent` (or `failed`).
-- [ ] **Atomic Claim Query**: Implement `UPDATE reminders SET status='claimed', claimed_at=? WHERE id=? AND status='pending'` before triggering socket send.
-- [ ] **Startup Catch-Up Recovery**: On daemon boot, automatically re-queue any `claimed` row older than 3 minutes (handles mid-send process crashes).
-- [ ] **UTC Timestamp Normalization**: Store all timestamps in UTC and render localized time strings strictly at send time.
+- [x] **Atomic Claim State Machine**: Upgraded `reminders` DB schema to use explicit status states: `pending` ➔ `claimed` ➔ `sent` (or `failed`).
+- [x] **Atomic Claim Query**: Implemented `UPDATE reminders SET status='claimed', claimed_at=? WHERE id=? AND status='pending'` before triggering socket send.
+- [x] **Startup Catch-Up Recovery**: On daemon boot, automatically re-queues any `claimed` row older than 3 minutes (handles mid-send process crashes).
+- [x] **UTC Timestamp Normalization**: Stores all timestamps in UTC and renders localized time strings strictly at send time.
 
 ---
 

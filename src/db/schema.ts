@@ -200,6 +200,15 @@ export function initializeDatabaseSchema(): void {
   if (!contactColNames.has('autopilot_enabled')) {
     db.exec(`ALTER TABLE contacts ADD COLUMN autopilot_enabled INTEGER NOT NULL DEFAULT 0;`);
   }
+
+  const remCols = db.prepare(`PRAGMA table_info(reminders)`).all() as Array<{ name: string }>;
+  const remColNames = new Set(remCols.map(c => c.name));
+  if (!remColNames.has('claimed_at')) {
+    db.exec(`ALTER TABLE reminders ADD COLUMN claimed_at INTEGER;`);
+  }
+  if (!remColNames.has('sent_at')) {
+    db.exec(`ALTER TABLE reminders ADD COLUMN sent_at INTEGER;`);
+  }
 }
 
 export function purgeAllData(): void {

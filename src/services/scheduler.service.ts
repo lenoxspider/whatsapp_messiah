@@ -18,7 +18,10 @@ class SchedulerService {
     if (this.isRunning) return;
     this.isRunning = true;
 
-    // Check for due reminders and due agent tasks every 30 seconds
+    // 1. On startup: re-queue any stale 'claimed' reminders from previous daemon crash
+    reminderRepo.requeueStaleClaims();
+
+    // 2. Check for due reminders and due agent tasks every 30 seconds
     cron.schedule('*/30 * * * * *', async () => {
       await this.checkDueReminders();
       const sock = this.socketProvider ? this.socketProvider() : null;
@@ -27,7 +30,7 @@ class SchedulerService {
       }
     });
 
-    // Automated Nightly Disaster Recovery Backup at 03:00 AM
+    // 3. Automated Nightly Disaster Recovery Backup at 03:00 AM
     cron.schedule('0 3 * * *', async () => {
       console.log('[SchedulerService] Running scheduled nightly backup...');
       try {
@@ -58,29 +61,35 @@ class SchedulerService {
       }
     });
 
-    console.log('[SchedulerService] Background cron initialized (Reminders: 1m, Nightly Backup: 03:00).');
+    console.log('[SchedulerService] Background cron initialized (Reminders: 30s atomic claim, Nightly Backup: 03:00).');
   }
 
   private async checkDueReminders(): Promise<void> {
-    const due = reminderRepo.getDueReminders(Date.now());
-    if (due.length === 0) return;
+    // Atomically claim due reminders (switches status from 'pending' -> 'claimed')
+    const now = Date.now();
+    const claimedReminders = reminderRepo.claimDueReminders(now);
+    if (claimedReminders.length === 0) return;
 
     const sock = this.socketProvider ? this.socketProvider() : null;
 
-    for (const reminder of due) {
-      const text = `⏰ *REMINDER:* ${reminder.task}`;
+    for (const reminder of claimedReminders) {
+      // Always normalize/render localized time at send time from UTC trigger_at timestamp
+      const scheduledTimeStr = new Date(reminder.trigger_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const text = `⏰ *REMINDER:* ${reminder.task} _(scheduled for ${scheduledTimeStr})_`;
 
       if (sock && env.ownerJid) {
         try {
           await sock.sendMessage(env.ownerJid, { text });
-          reminderRepo.markCompleted(reminder.id);
-          console.log(`[SchedulerService] Dispatched reminder #${reminder.id}`);
-        } catch (err) {
-          console.error(`[SchedulerService] Failed to send reminder #${reminder.id}:`, err);
+          reminderRepo.markSent(reminder.id);
+          console.log(`[SchedulerService] Dispatched reminder #${reminder.id} ("${reminder.task}") to owner (${env.ownerJid})`);
+        } catch (err: any) {
+          console.error(`[SchedulerService] Failed to send reminder #${reminder.id}:`, err.message);
+          reminderRepo.markFailed(reminder.id);
         }
       } else {
-        // Fallback: Notify Discord if WhatsApp socket is offline
-        await discordService.sendHealthAlert(`WhatsApp socket offline. Missed reminder: "${reminder.task}"`);
+        // Fallback: Notify Discord if WhatsApp socket is offline, then mark failed for re-queue
+        await discordService.sendHealthAlert(`WhatsApp socket offline. Missed reminder #${reminder.id}: "${reminder.task}"`);
+        reminderRepo.markFailed(reminder.id);
       }
     }
   }
