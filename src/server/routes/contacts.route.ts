@@ -1,18 +1,92 @@
 import { Router } from 'express';
 import { contactRepo } from '../../db/repositories/contact.repo.js';
+import { contactFactRepo } from '../../db/repositories/contact_fact.repo.js';
+import { messageRepo } from '../../db/repositories/message.repo.js';
 import { getDatabase } from '../../db/client.js';
 
 export const contactsRouter = Router();
 
 contactsRouter.get('/', (req, res) => {
   const db = getDatabase();
-  const rows = db.prepare(`
-    SELECT * FROM contacts
-    ORDER BY last_interaction DESC
-    LIMIT 100
-  `).all();
+  const search = req.query.q ? String(req.query.q).trim() : '';
+  const tier = req.query.tier ? Number(req.query.tier) : null;
 
+  let query = `
+    SELECT c.*, 
+      (SELECT COUNT(*) FROM contact_facts WHERE jid = c.jid AND superseded_by IS NULL) as facts_count,
+      (SELECT COUNT(*) FROM messages WHERE sender_jid = c.jid AND is_revoked = 1) as revoked_count
+    FROM contacts c
+    WHERE 1=1
+  `;
+  const params: any[] = [];
+
+  if (tier) {
+    query += ` AND c.tier = ?`;
+    params.push(tier);
+  }
+
+  if (search) {
+    query += ` AND (c.name LIKE ? OR c.phone LIKE ? OR c.jid LIKE ?)`;
+    const s = `%${search}%`;
+    params.push(s, s, s);
+  }
+
+  query += ` ORDER BY c.last_interaction DESC LIMIT 200`;
+
+  const rows = db.prepare(query).all(...params);
   res.json({ contacts: rows });
+});
+
+contactsRouter.get('/:jid/details', (req, res) => {
+  const jid = decodeURIComponent(req.params.jid);
+  const contact = contactRepo.getContact(jid);
+  if (!contact) {
+    return res.status(404).json({ error: 'Contact not found' });
+  }
+
+  const db = getDatabase();
+  const facts = contactFactRepo.getAllFactsForContact(jid);
+  const recentMessages = messageRepo.getRecentChatHistory(jid, 25);
+  const calls = db.prepare('SELECT * FROM calls WHERE caller_jid = ? ORDER BY timestamp DESC LIMIT 10').all(jid);
+  const statsRow = db.prepare(`
+    SELECT 
+      (SELECT COUNT(*) FROM messages WHERE chat_jid = ? OR sender_jid = ?) as total_messages,
+      (SELECT COUNT(*) FROM messages WHERE sender_jid = ? AND is_revoked = 1) as revoked_count,
+      (SELECT COUNT(*) FROM calls WHERE caller_jid = ?) as total_calls
+  `).get(jid, jid, jid, jid) as any;
+
+  res.json({
+    contact,
+    facts,
+    recentMessages,
+    calls,
+    stats: {
+      totalMessages: statsRow?.total_messages || 0,
+      revokedCount: statsRow?.revoked_count || 0,
+      totalCalls: statsRow?.total_calls || 0
+    }
+  });
+});
+
+contactsRouter.post('/:jid/facts', (req, res) => {
+  const jid = decodeURIComponent(req.params.jid);
+  const { fact, category } = req.body;
+  if (!fact || !String(fact).trim()) {
+    return res.status(400).json({ error: 'Fact content is required' });
+  }
+
+  const created = contactFactRepo.addFact(jid, String(fact).trim(), category ? String(category).trim() : 'general');
+  res.json({ success: true, fact: created });
+});
+
+contactsRouter.delete('/facts/:id', (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) {
+    return res.status(400).json({ error: 'Valid fact ID required' });
+  }
+
+  contactFactRepo.deleteFact(id);
+  res.json({ success: true, id });
 });
 
 contactsRouter.put('/:jid', (req, res) => {

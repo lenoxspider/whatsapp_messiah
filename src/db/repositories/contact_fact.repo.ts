@@ -81,6 +81,11 @@ export class ContactFactRepository {
     const row = stmt.get(id) as unknown as ContactFactRecord | undefined;
     return row || null;
   }
+
+  deleteFact(id: number): void {
+    const stmt = this.db.prepare(`DELETE FROM contact_facts WHERE id = ?`);
+    stmt.run(id);
+  }
 }
 
 export const contactFactRepo = new ContactFactRepository();

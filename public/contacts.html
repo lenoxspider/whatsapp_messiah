@@ -24,7 +24,10 @@
 
       <!-- View Switcher -->
       <div style="display: flex; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 2px;">
-        <button id="tab-btn-tiers" class="btn" style="background: var(--bg-elevated); color: var(--accent-green); border: none; padding: 0.35rem 0.85rem; font-size: 0.78rem; font-weight: 600; cursor: pointer; border-radius: var(--radius-sm);">
+        <button id="tab-btn-directory" class="btn" style="background: var(--bg-elevated); color: var(--accent-green); border: none; padding: 0.35rem 0.85rem; font-size: 0.78rem; font-weight: 600; cursor: pointer; border-radius: var(--radius-sm);">
+          📇 Directory &amp; Dossiers
+        </button>
+        <button id="tab-btn-tiers" class="btn" style="background: transparent; color: var(--text-muted); border: none; padding: 0.35rem 0.85rem; font-size: 0.78rem; font-weight: 600; cursor: pointer; border-radius: var(--radius-sm);">
           👥 Tier Board
         </button>
         <button id="tab-btn-revoked" class="btn" style="background: transparent; color: var(--text-muted); border: none; padding: 0.35rem 0.85rem; font-size: 0.78rem; font-weight: 600; cursor: pointer; border-radius: var(--radius-sm);">
@@ -33,8 +36,52 @@
       </div>
     </div>
 
+    <!-- VIEW 0: Two-Pane Contact Directory & Dossier Inspector -->
+    <div id="view-directory">
+      <div class="two-pane-container" style="height: calc(100vh - 175px); min-height: 560px;">
+        <!-- Left Pane: Contact Directory -->
+        <div class="pane-surface" style="display: flex; flex-direction: column; flex: 0 0 380px; max-width: 420px;">
+          <div class="pane-header" style="flex-direction: column; gap: 0.6rem; padding: 0.75rem 0.85rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+              <span class="pane-title" style="font-size: 0.82rem;">Contacts Directory</span>
+              <span id="directory-total-badge" class="delta-badge">0</span>
+            </div>
+            <!-- Search -->
+            <input type="text" id="directory-search-input" placeholder="Search by name, phone (+233...)" style="width: 100%; background: var(--bg-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 0.45rem 0.65rem; border-radius: var(--radius-sm); font-size: 0.8rem; font-family: var(--font-sans);" />
+            <!-- Filter chips -->
+            <div style="display: flex; gap: 0.25rem; overflow-x: auto; width: 100%; padding-bottom: 2px;" id="directory-tier-filter-chips">
+              <button type="button" class="btn-filter-chip active-filter" data-tier="all">All</button>
+              <button type="button" class="btn-filter-chip" data-tier="1">🟢 T1</button>
+              <button type="button" class="btn-filter-chip" data-tier="2">🔵 T2</button>
+              <button type="button" class="btn-filter-chip" data-tier="3">🟣 T3</button>
+              <button type="button" class="btn-filter-chip" data-tier="4">🟡 T4</button>
+              <button type="button" class="btn-filter-chip" data-tier="5">🔴 T5</button>
+            </div>
+          </div>
+
+          <div class="pane-scrollable" id="directory-list-container" style="flex: 1; padding: 0.5rem;">
+            <div style="color: var(--text-dim); padding: 2rem; text-align: center; font-size: 0.82rem;">Loading contacts...</div>
+          </div>
+        </div>
+
+        <!-- Right Pane: Contact Dossier & Living Intel -->
+        <div class="pane-surface" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+          <div class="pane-header" style="justify-content: space-between;">
+            <span class="pane-title">Contact Intelligence Dossier</span>
+            <span id="dossier-tier-badge" class="delta-badge">SELECT CONTACT</span>
+          </div>
+
+          <div class="pane-scrollable" id="dossier-content-container" style="flex: 1; padding: 1.25rem;">
+            <div style="color: var(--text-dim); padding: 5rem 1rem; text-align: center; font-size: 0.85rem;">
+              Select a contact from the directory on the left to view their dossier, living memory facts, forensic history, and persona configuration.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- VIEW 1: Five-Column Drag & Drop Tier Board -->
-    <div id="view-tier-board">
+    <div id="view-tier-board" style="display: none;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
         <span style="font-size: 0.78rem; color: var(--text-dim); font-family: var(--font-mono);">
           Drag &amp; drop contact cards or select and press [1]–[5] to reclassify instantly. Sorted by recency.

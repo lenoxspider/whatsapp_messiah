@@ -49,9 +49,9 @@ function ensureIconRail(currentPath) {
         <span class="rail-icon">🧠</span>
         <span class="rail-label">Vault</span>
       </a>
-      <a href="/contacts.html" class="rail-item ${currentPath.includes('contacts') ? 'active' : ''}" title="Contacts & Tier Board">
-        <span class="rail-icon">🛡️</span>
-        <span class="rail-label">Tiers &amp; Intel</span>
+      <a href="/contacts.html" class="rail-item ${currentPath.includes('contacts') ? 'active' : ''}" title="Contacts Directory & Dossiers">
+        <span class="rail-icon">👥</span>
+        <span class="rail-label">Contacts</span>
       </a>
       <a href="/config.html" class="rail-item ${currentPath.includes('config') ? 'active' : ''}" title="System Config & Studio">
         <span class="rail-icon">⚙️</span>
