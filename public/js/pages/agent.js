@@ -166,7 +166,7 @@ async function loadTasksOnly() {
 
 async function loadContacts() {
   try {
-    const res = await apiRequest('/api/contacts');
+    const res = await apiRequest('/api/contacts?limit=10000');
     allContacts = Array.isArray(res) ? res : (res?.contacts || []);
     populateContactSelect();
     renderContactsTable();

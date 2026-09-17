@@ -33,10 +33,13 @@ contactsRouter.get('/', (req, res) => {
     params.push(s, s, s);
   }
 
-  query += ` ORDER BY c.last_interaction DESC LIMIT 200`;
+  const limit = req.query.limit ? Number(req.query.limit) : 10000;
+  query += ` ORDER BY c.last_interaction DESC LIMIT ?`;
+  params.push(limit);
 
+  const totalCount = contactRepo.getContactCount();
   const rows = db.prepare(query).all(...params);
-  res.json({ contacts: rows });
+  res.json({ contacts: rows, total: totalCount });
 });
 
 contactsRouter.get('/:jid/details', (req, res) => {

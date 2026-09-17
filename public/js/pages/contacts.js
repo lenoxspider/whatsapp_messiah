@@ -175,17 +175,18 @@ export function initContactsPage() {
 
 async function loadContacts() {
   try {
-    const data = await apiRequest('/api/contacts');
+    const data = await apiRequest('/api/contacts?limit=10000');
     contactsList = data.contacts || [];
 
     // Sort by recency of interaction
     contactsList.sort((a, b) => (b.last_interaction || 0) - (a.last_interaction || 0));
 
+    const totalCount = data.total ?? contactsList.length;
     const totalBadge = document.getElementById('directory-total-badge');
-    if (totalBadge) totalBadge.textContent = contactsList.length;
+    if (totalBadge) totalBadge.textContent = totalCount;
 
     const totalContactsLabel = document.getElementById('total-contacts-label');
-    if (totalContactsLabel) totalContactsLabel.textContent = `${contactsList.length} Contacts Tracked`;
+    if (totalContactsLabel) totalContactsLabel.textContent = `${totalCount} Contacts Tracked`;
 
     renderDirectory();
     renderTierBoard();
