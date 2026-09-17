@@ -10,67 +10,79 @@ export interface ReconnectDecision {
   delayMs?: number;
 }
 
-// Track consecutive 428s on unregistered sessions for backoff
-let consecutiveRestartRequired = 0;
+// Reconnect counters & circuit breaker state
+let consecutiveFailures = 0;
+let consecutiveReplaced = 0;
+const MAX_CIRCUIT_BREAKER_FAILURES = 10;
 
 export function resetRestartCounter() {
-  consecutiveRestartRequired = 0;
+  consecutiveFailures = 0;
+  consecutiveReplaced = 0;
 }
 
 export function evaluateDisconnect(error: unknown, isRegistered: boolean = false): ReconnectDecision {
   const isBoom = error instanceof Boom;
   const statusCode = isBoom ? error.output.statusCode : undefined;
 
+  consecutiveFailures++;
+
+  // Circuit Breaker: If 10 consecutive connection attempts fail without a successful connection, halt.
+  if (consecutiveFailures > MAX_CIRCUIT_BREAKER_FAILURES) {
+    console.error(`\n🚨 [Circuit Breaker] Reconnected ${consecutiveFailures} times without success. Halting auto-reconnect to prevent ban loops.\n`);
+    discordService.sendHealthAlert(`Circuit Breaker Tripped: Failed to reconnect after ${consecutiveFailures} attempts. Auto-reconnect halted.`);
+    return { shouldReconnect: false, reason: 'Circuit Breaker Tripped' };
+  }
+
   switch (statusCode) {
     case DisconnectReason.loggedOut:
-      // If never registered, this was just an expired pairing handshake!
+    case 401:
+      // If never registered, this was an expired pairing handshake!
       if (!isRegistered) {
-        console.log('[Connection] Pairing session timed out. Cleaning stale session and resetting socket...');
+        console.log('[Connection] Pairing session timed out. Resetting session...');
         try {
           if (fs.existsSync(env.sessionsDir)) {
             fs.rmSync(env.sessionsDir, { recursive: true, force: true });
             fs.mkdirSync(env.sessionsDir, { recursive: true });
           }
         } catch {}
-        consecutiveRestartRequired = 0;
+        consecutiveFailures = 0;
         return { shouldReconnect: true, reason: 'Pairing reset', delayMs: 2000 };
       }
 
-      discordService.sendHealthAlert('WhatsApp session was logged out or unlinked by Meta. Re-pairing required.');
-      console.error('\n[Connection] Device was logged out. Please delete the sessions/ folder and re-pair.\n');
-      return { shouldReconnect: false, reason: 'Logged out' };
-
-    case DisconnectReason.restartRequired:
-      if (!isRegistered) {
-        // WhatsApp rate-limits unregistered devices with repeated 428s.
-        // Apply exponential backoff: 4s, 8s, 16s, 32s max.
-        consecutiveRestartRequired++;
-        const delayMs = Math.min(4000 * Math.pow(2, consecutiveRestartRequired - 1), 32000);
-        if (consecutiveRestartRequired > 2) {
-          console.warn(`[Connection] WhatsApp rate-limiting new session (attempt ${consecutiveRestartRequired}). Backing off ${delayMs / 1000}s before retry...`);
-        } else {
-          console.log(`[Connection] Temporary disconnect (428). Reconnecting in ${delayMs / 1000}s...`);
-        }
-        return { shouldReconnect: true, reason: 'Temporary drop', delayMs };
-      }
-      // Registered session: normal reconnect
-      consecutiveRestartRequired = 0;
-      console.log(`[Connection] Temporary disconnect (428). Reconnecting...`);
-      return { shouldReconnect: true, reason: 'Temporary drop', delayMs: 4000 };
-
-    case DisconnectReason.connectionClosed:
-    case DisconnectReason.connectionLost:
-    case DisconnectReason.timedOut:
-      consecutiveRestartRequired = 0;
-      console.log(`[Connection] Temporary disconnect (${statusCode}). Reconnecting...`);
-      return { shouldReconnect: true, reason: 'Temporary drop', delayMs: 4000 };
+      // Terminal 401 logged out state: HALT immediately to prevent account ban
+      discordService.sendHealthAlert('WhatsApp session was logged out or unlinked by Meta. Auto-reconnect HALTED.');
+      console.error('\n🚫 [Connection] Device was logged out (401). Auto-reconnect halted to prevent account flag. Please re-pair.\n');
+      return { shouldReconnect: false, reason: 'Logged out (Terminal)' };
 
     case DisconnectReason.connectionReplaced:
-      console.warn('[Connection] Connection replaced: another session took over. Halting auto-reconnect to avoid collision.');
-      return { shouldReconnect: false, reason: 'Connection replaced' };
+    case 440:
+      consecutiveReplaced++;
+      if (consecutiveReplaced > 1) {
+        console.warn('⚠️ [Connection] Connection replaced again by another active session. Halting auto-reconnect.');
+        discordService.sendHealthAlert('WhatsApp connection replaced by another device session. Auto-reconnect halted.');
+        return { shouldReconnect: false, reason: 'Connection replaced (Collision)' };
+      }
+      console.warn('⚠️ [Connection] Connection replaced: another session connected. Attempting single retry in 5s...');
+      return { shouldReconnect: true, reason: 'Connection replaced', delayMs: 5000 };
 
-    default:
-      console.log(`[Connection] Disconnected with status code ${statusCode}. Attempting reconnect.`);
-      return { shouldReconnect: true, reason: 'Unknown', delayMs: 4000 };
+    case DisconnectReason.restartRequired:
+    case 428:
+    case 515: // Stream / Experimental Error
+    case DisconnectReason.timedOut:
+    case DisconnectReason.connectionLost:
+    case DisconnectReason.connectionClosed: {
+      // Exponential backoff with random jitter (base 3s, max 30s)
+      const baseDelay = Math.min(3000 * Math.pow(1.5, Math.min(consecutiveFailures - 1, 6)), 30000);
+      const jitter = Math.floor(baseDelay * (0.8 + Math.random() * 0.4)); // +/- 20% jitter
+
+      console.log(`[Connection] Temporary disconnect (${statusCode || 'drop'}). Reconnecting in ${(jitter / 1000).toFixed(1)}s (Attempt ${consecutiveFailures}/${MAX_CIRCUIT_BREAKER_FAILURES})...`);
+      return { shouldReconnect: true, reason: 'Temporary drop', delayMs: jitter };
+    }
+
+    default: {
+      const delayMs = Math.min(4000 * consecutiveFailures, 20000);
+      console.log(`[Connection] Disconnected with status code ${statusCode}. Reconnecting in ${delayMs / 1000}s...`);
+      return { shouldReconnect: true, reason: `Status Code ${statusCode}`, delayMs };
+    }
   }
 }

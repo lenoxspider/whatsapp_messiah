@@ -30,13 +30,13 @@
 ## 📋 FEATURE-BY-FEATURE HARDENING TIER
 
 ### Tier 1: Core Connectivity & Error Classification
-- [ ] **Disconnect Reason Classification**:
-  - `401 / loggedOut`: Terminal state ➔ Alert owner and HALT auto-reconnect (prevents account ban loop).
-  - `440 / connectionReplaced`: Reconnect max 1 time ➔ Halt if replaced again.
-  - `428 / 515 / temporary`: Reconnect with exponential backoff + jitter.
-- [ ] **Atomic Credential Writes**: Save credentials to `creds.tmp`, sync file, and perform atomic rename to prevent `creds.json` corruption on unclean shutdown.
-- [ ] **Rolling Credential Snapshots**: Maintain timestamped rolling backups (keep last N) of `creds.json` and app-state keys.
-- [ ] **Socket Heartbeat Monitor**: Implement socket-level liveness ping (separate from OS process health).
+- [x] **Disconnect Reason Classification**:
+  - `401 / loggedOut`: Terminal state ➔ Halts auto-reconnect and dispatches Discord health alert (prevents account ban loop).
+  - `440 / connectionReplaced`: Reconnects max 1 time ➔ Halts if collision persists.
+  - `428 / 515 / temporary`: Exponential backoff with random +/-20% jitter & circuit breaker (max 10 attempts).
+- [x] **Atomic Credential Writes**: Wrapped `saveCreds` with atomic temp write (`creds.tmp`), `fsync`, and atomic rename to `creds.json`.
+- [x] **Rolling Credential Snapshots**: Takes timestamped session snapshots in `data/sessions_backups/` upon successful connection (keeps last 5 snapshots).
+- [x] **Socket Heartbeat Monitor**: Checks WebSocket `readyState` every 60s and triggers clean reconnection if socket drops silently.
 
 ### Tier 2: Anti-ViewOnce Optimization
 - [ ] **Message ID Idempotency**: Single deduplication key on message ID across both resend request and Type 17 decode paths to prevent duplicate alerts.

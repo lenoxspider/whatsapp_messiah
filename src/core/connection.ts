@@ -6,7 +6,7 @@ import makeWASocket, {
 import fs from 'node:fs';
 import path from 'node:path';
 import pino from 'pino';
-import { initAuthState } from './auth.js';
+import { initAuthState, createSessionSnapshot } from './auth.js';
 import { handlePairing } from './pairing.js';
 import { evaluateDisconnect, resetRestartCounter } from './reconnect.js';
 import { dashboardState } from '../server/state.js';
@@ -163,15 +163,22 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
       resetRestartCounter();
       callbacks.onReady(sock);
 
+      // Create timestamped session snapshot after successful connection
+      createSessionSnapshot();
 
-      // Explicitly advertise available presence so WhatsApp servers deliver View-Once
-      // messages rather than unavailable stubs to the companion device.
+      // Explicitly advertise available presence & monitor socket readyState heartbeat
       sock.sendPresenceUpdate('available').catch(() => {});
       if (presenceInterval) {
         clearInterval(presenceInterval);
       }
       presenceInterval = setInterval(() => {
         if (activeSocket === sock) {
+          const wsState = (sock.ws as any)?.readyState;
+          if (wsState === 2 || wsState === 3) {
+            console.warn('[Heartbeat] Socket WebSocket is closed/closing. Triggering reconnection...');
+            startWhatsAppSocket(callbacks).catch(() => {});
+            return;
+          }
           sock.sendPresenceUpdate('available').catch(() => {});
         }
       }, 60000);
