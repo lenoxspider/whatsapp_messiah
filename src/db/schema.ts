@@ -136,6 +136,19 @@ export function initializeDatabaseSchema(): void {
 
     CREATE INDEX IF NOT EXISTS idx_message_edits_msg_id ON message_edits(message_id);
     CREATE INDEX IF NOT EXISTS idx_message_edits_timestamp ON message_edits(timestamp);
+
+    CREATE TABLE IF NOT EXISTS contact_dossiers (
+      jid TEXT PRIMARY KEY,
+      summary TEXT NOT NULL,
+      open_commitments_json TEXT,
+      tone_profile TEXT,
+      topics_json TEXT,
+      message_count_analyzed INTEGER NOT NULL,
+      generated_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_contact_dossiers_expires ON contact_dossiers(expires_at);
   `);
 
   // Safe migration for existing SQLite database

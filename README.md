@@ -39,6 +39,8 @@ WhatsApp Messiah turns your personal WhatsApp account into an autonomous intelli
 | **First-Time Contact Anomaly Radar** | Automatically detects when an unknown number with 0 prior history messages sends you a DM. Classifies as Tier 4 stranger, discovers shared groups, and pings Discord. | Asynchronous socket + SQLite identity lookup. |
 | **Stealth Call Rejecter** | Silently and automatically rejects all inbound voice and video WhatsApp calls (`sock.rejectCall`). No ring, no voicemail, zero interruption. | Calls logged to SQLite with caller JID and timestamp; instant alert sent to Discord. |
 | **Status Stealer ("Ghost Capture")** | Reply to any contact's WhatsApp status with `!😶🌫️` (or custom trigger). Messiah downloads the original high-resolution photo/video or text, archives it to your vault, forwards it to Discord, and immediately revokes your reply so the contact never sees it. | Full media decryption via `contextInfo.quotedMessage` with instant `delete for everyone` stealth revocation. |
+| **Contact Dossier Auto-Build** | Synthesizes an executive intelligence summary from past chat history (last 50–100 messages), extracting relationship dynamics, open commitments/promises, communication tone, and key themes. | Caches in SQLite for 7 days ($0 waste); accessible via `!dossier` and web dashboard. |
+| **Thread Resurrection (Cold Radar)** | Surfaces VIP (Tier 1) and Friend (Tier 2) connections that have gone silent (> 14 or 30 days), highlighting days dormant with 1-click WhatsApp quick links. | Accessible via `!dormant` and web dashboard Cold Threads radar. |
 | **Per-Contact Living Memory** | Inbound messages from contacts trigger an asynchronous background AI extractor that captures durable personal facts (family, jobs, locations, preferences, commitments) into `contact_facts`. | Living memory is automatically injected into the Messiah Ghost persona generator. |
 | **Voice Fingerprinting & Style Mimicry** | Samples your sent messages (`from_me = 1`) to extract your natural casing quirks, slang, sentence length, and emoji frequency. Replies sound like *you*, not a bot. | Auto-generated style guide injected into ghost replies; cached for 6 hours. |
 | **Humanized Presence & Timing Simulation** | Emulates realistic human latency: a **2.5s–8s reflection delay** before picking up the phone, plus dynamic typing speed with natural **800ms mid-typing pauses** on long replies. | WhatsApp `composing` and `paused` presence simulation with randomized jitter. |
@@ -152,6 +154,8 @@ Send these commands to yourself in your WhatsApp self-chat:
 |---|---|---|
 | `!ask` | `!ask <instruction or question>` | Autonomous tool-calling AI agent over your SQLite database. |
 | `!who` | `!who [phone or reply to message]` | Identity & shared group resolver: look up any number or quoted message. |
+| `!dossier` | `!dossier [phone or reply]` | Synthesize AI executive intelligence dossier with open commitments. |
+| `!dormant` | `!dormant [days]` | Surface high-priority VIP & friend relationships going cold (> 14 days). |
 | `!note` | `!note [#tag] <content>` | Captures a note directly into your vault. |
 | `!find` | `!find <query>` | Hybrid semantic + keyword search over your notes vault. |
 | `!remind` | `!remind <time> <task>` | Schedules natural-language time-delayed task notifications. |

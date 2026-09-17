@@ -14,13 +14,15 @@ export function initContactsPage() {
   const tabBtnDirectory = document.getElementById('tab-btn-directory');
   const tabBtnTiers = document.getElementById('tab-btn-tiers');
   const tabBtnRevoked = document.getElementById('tab-btn-revoked');
+  const tabBtnDormant = document.getElementById('tab-btn-dormant');
   const viewDirectory = document.getElementById('view-directory');
   const viewTierBoard = document.getElementById('view-tier-board');
   const viewRevokedInbox = document.getElementById('view-revoked-inbox');
+  const viewDormant = document.getElementById('view-dormant');
 
   function switchTab(tab) {
     currentSubTab = tab;
-    [tabBtnDirectory, tabBtnTiers, tabBtnRevoked].forEach(b => {
+    [tabBtnDirectory, tabBtnTiers, tabBtnRevoked, tabBtnDormant].forEach(b => {
       if (b) {
         b.style.background = 'transparent';
         b.style.color = 'var(--text-muted)';
@@ -30,6 +32,7 @@ export function initContactsPage() {
     if (viewDirectory) viewDirectory.style.display = tab === 'directory' ? 'block' : 'none';
     if (viewTierBoard) viewTierBoard.style.display = tab === 'tiers' ? 'block' : 'none';
     if (viewRevokedInbox) viewRevokedInbox.style.display = tab === 'revoked' ? 'block' : 'none';
+    if (viewDormant) viewDormant.style.display = tab === 'dormant' ? 'block' : 'none';
 
     if (tab === 'directory') {
       if (tabBtnDirectory) {
@@ -49,12 +52,22 @@ export function initContactsPage() {
         tabBtnRevoked.style.color = 'var(--accent-coral)';
       }
       loadRevokedIntel();
+    } else if (tab === 'dormant') {
+      if (tabBtnDormant) {
+        tabBtnDormant.style.background = 'var(--bg-elevated)';
+        tabBtnDormant.style.color = '#38bdf8';
+      }
+      loadDormantThreads();
     }
   }
 
   tabBtnDirectory?.addEventListener('click', () => switchTab('directory'));
   tabBtnTiers?.addEventListener('click', () => switchTab('tiers'));
   tabBtnRevoked?.addEventListener('click', () => switchTab('revoked'));
+  tabBtnDormant?.addEventListener('click', () => switchTab('dormant'));
+
+  document.getElementById('btn-refresh-dormant')?.addEventListener('click', () => loadDormantThreads());
+  document.getElementById('dormant-days-select')?.addEventListener('change', () => loadDormantThreads());
 
   // Search in Directory
   const searchInput = document.getElementById('directory-search-input');
@@ -322,6 +335,24 @@ function renderDossier(data) {
       </div>
     </div>
 
+    <!-- AI Executive Dossier & Commitments Card -->
+    <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem;">
+        <div style="font-size: 0.84rem; font-weight: 600; color: #38bdf8; display: flex; align-items: center; gap: 0.4rem;">
+          <span>📋</span> AI Executive Dossier &amp; Commitments
+        </div>
+        <button type="button" id="btn-force-refresh-dossier" class="btn" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); color: var(--text-dim); font-size: 0.72rem; padding: 0.2rem 0.55rem; border-radius: var(--radius-sm); cursor: pointer;">
+          🔄 Force Refresh
+        </button>
+      </div>
+
+      <div id="ai-dossier-panel">
+        <div style="color: var(--text-dim); font-size: 0.78rem; text-align: center; padding: 1rem;">
+          Loading AI synthesis...
+        </div>
+      </div>
+    </div>
+
     <!-- Living Memory & Extracted Facts -->
     <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
@@ -482,6 +513,13 @@ function renderDossier(data) {
     } finally {
       btnSavePersona.disabled = false;
     }
+  });
+
+  // Load AI Executive Dossier asynchronously
+  loadAiDossier(contact.jid, false);
+
+  document.getElementById('btn-force-refresh-dossier')?.addEventListener('click', () => {
+    loadAiDossier(contact.jid, true);
   });
 }
 
@@ -883,6 +921,175 @@ function escapeHtml(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+async function loadAiDossier(jid, forceRefresh = false) {
+  const panel = document.getElementById('ai-dossier-panel');
+  if (!panel) return;
+
+  panel.innerHTML = `
+    <div style="color: var(--text-dim); font-size: 0.78rem; text-align: center; padding: 1.5rem;">
+      <span style="display: inline-block;">⏳</span> Synthesizing executive intelligence brief...
+    </div>
+  `;
+
+  try {
+    const url = forceRefresh ? `/api/contacts/${encodeURIComponent(jid)}/dossier/refresh` : `/api/contacts/${encodeURIComponent(jid)}/dossier`;
+    const res = await apiRequest(url, forceRefresh ? { method: 'POST' } : undefined);
+    const dossier = res.dossier;
+    if (!dossier) throw new Error('No dossier returned');
+
+    const commitmentsHtml = dossier.openCommitments && dossier.openCommitments.length > 0
+      ? dossier.openCommitments.map(c => `
+          <div style="display: flex; gap: 0.4rem; align-items: flex-start; font-size: 0.78rem; color: var(--text-main); margin-bottom: 0.35rem;">
+            <span style="color: #38bdf8;">•</span>
+            <span>${escapeHtml(c)}</span>
+          </div>
+        `).join('')
+      : `<div style="font-size: 0.75rem; color: var(--text-dim); font-style: italic;">No pending commitments or unresolved threads detected.</div>`;
+
+    const topicsHtml = dossier.topics && dossier.topics.length > 0
+      ? dossier.topics.map(t => `<span class="badge" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); color: var(--text-muted); font-size: 0.7rem; padding: 0.15rem 0.45rem; border-radius: var(--radius-sm);">#${escapeHtml(t)}</span>`).join(' ')
+      : '';
+
+    const cacheDate = new Date(dossier.generatedAt).toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+    panel.innerHTML = `
+      <!-- Tone & Cache Strip -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
+        <div style="display: flex; align-items: center; gap: 0.4rem;">
+          <span style="font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase;">Tone:</span>
+          <span class="badge" style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-size: 0.72rem; padding: 0.15rem 0.5rem; border-radius: var(--radius-sm); font-weight: 600;">
+            ${escapeHtml(dossier.toneProfile || 'Neutral')}
+          </span>
+        </div>
+        <span style="font-size: 0.7rem; color: var(--text-dim); font-family: var(--font-mono);">
+          ${dossier.cached ? `⚡ Cached (${cacheDate})` : `✨ Freshly Generated`}
+        </span>
+      </div>
+
+      <!-- Summary -->
+      <div style="font-size: 0.82rem; color: var(--text-main); line-height: 1.45; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 0.75rem;">
+        ${escapeHtml(dossier.summary)}
+      </div>
+
+      <!-- Open Commitments -->
+      <div style="margin-bottom: 0.75rem;">
+        <div style="font-size: 0.74rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.35rem;">
+          <span>📌</span> Open Commitments &amp; Threads
+        </div>
+        ${commitmentsHtml}
+      </div>
+
+      <!-- Topics -->
+      ${topicsHtml ? `
+        <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.5rem;">
+          ${topicsHtml}
+        </div>
+      ` : ''}
+    `;
+  } catch (err) {
+    panel.innerHTML = `
+      <div style="color: var(--accent-coral); font-size: 0.78rem; padding: 0.5rem 0;">
+        Failed to load dossier: ${escapeHtml(err.message)}
+      </div>
+    `;
+  }
+}
+
+async function loadDormantThreads() {
+  const grid = document.getElementById('dormant-cards-grid');
+  const badgeCount = document.getElementById('tab-dormant-count');
+  const daysSelect = document.getElementById('dormant-days-select');
+  const days = daysSelect ? daysSelect.value : 14;
+
+  if (grid) {
+    grid.innerHTML = `
+      <div style="color: var(--text-dim); font-size: 0.82rem; padding: 3rem; text-align: center; grid-column: 1 / -1;">
+        Scanning for dormant relationships (> ${days} days)...
+      </div>
+    `;
+  }
+
+  try {
+    const res = await apiRequest(`/api/contacts/dormant?days=${days}&tier=2`);
+    const dormantContacts = res.dormantContacts || [];
+
+    if (badgeCount) badgeCount.textContent = dormantContacts.length;
+
+    if (!grid) return;
+
+    if (dormantContacts.length === 0) {
+      grid.innerHTML = `
+        <div style="color: var(--accent-green); font-size: 0.85rem; padding: 3rem; text-align: center; grid-column: 1 / -1; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);">
+          ✨ No dormant connections found! All Tier 1 (VIP) and Tier 2 (Friends) have been active in the last ${days} days.
+        </div>
+      `;
+      return;
+    }
+
+    grid.innerHTML = dormantContacts.map(c => {
+      const tierMeta = getTierLabel(c.tier);
+      const displayName = c.name || `+${c.phone}`;
+      const phoneDigits = c.phone.replace(/[^0-9]/g, '');
+
+      return `
+        <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1rem; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+              <div>
+                <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.2rem;">
+                  ${escapeHtml(displayName)}
+                </h3>
+                <div style="font-size: 0.75rem; color: var(--text-dim); font-family: var(--font-mono);">
+                  +${escapeHtml(c.phone)}
+                </div>
+              </div>
+              <span class="delta-badge" style="color: ${tierMeta.color}; border: 1px solid ${tierMeta.color}; font-size: 0.68rem;">
+                ${tierMeta.label}
+              </span>
+            </div>
+
+            <div style="background: var(--bg-elevated); border-radius: var(--radius-sm); padding: 0.5rem 0.75rem; margin-top: 0.5rem; margin-bottom: 0.75rem;">
+              <div style="font-size: 0.75rem; color: #38bdf8; font-weight: 600; font-family: var(--font-mono);">
+                ❄️ Silent for ${c.daysDormant} days
+              </div>
+              <div style="font-size: 0.7rem; color: var(--text-dim);">
+                Last spoken: ${escapeHtml(c.formattedLastSpoke)}
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+            <a href="https://wa.me/${phoneDigits}" target="_blank" class="btn" style="flex: 1; text-align: center; text-decoration: none; background: rgba(37, 211, 102, 0.15); color: #25D366; border: 1px solid rgba(37, 211, 102, 0.3); padding: 0.35rem; font-size: 0.75rem; font-weight: 600; border-radius: var(--radius-sm);">
+              💬 Open WhatsApp
+            </a>
+            <button type="button" class="btn btn-view-dormant-dossier" data-jid="${escapeHtml(c.jid)}" style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-size: 0.75rem; padding: 0.35rem 0.65rem; border-radius: var(--radius-sm); cursor: pointer;">
+              📋 Dossier
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Bind View Dossier buttons
+    grid.querySelectorAll('.btn-view-dormant-dossier').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const jid = btn.getAttribute('data-jid');
+        const tabBtnDirectory = document.getElementById('tab-btn-directory');
+        tabBtnDirectory?.click();
+        loadContactDossier(jid);
+      });
+    });
+  } catch (err) {
+    if (grid) {
+      grid.innerHTML = `
+        <div style="color: var(--accent-coral); font-size: 0.82rem; padding: 2rem; text-align: center; grid-column: 1 / -1;">
+          Failed to load dormant contacts: ${escapeHtml(err.message)}
+        </div>
+      `;
+    }
+  }
 }
 
 document.addEventListener('DOMContentLoaded', initContactsPage);

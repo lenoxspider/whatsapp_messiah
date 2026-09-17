@@ -3,6 +3,8 @@ import { contactRepo } from '../../db/repositories/contact.repo.js';
 import { contactFactRepo } from '../../db/repositories/contact_fact.repo.js';
 import { messageRepo } from '../../db/repositories/message.repo.js';
 import { getDatabase } from '../../db/client.js';
+import { dossierService } from '../../services/dossier.service.js';
+import { resurrectionService } from '../../services/resurrection.service.js';
 
 export const contactsRouter = Router();
 
@@ -148,3 +150,31 @@ contactsRouter.get('/revoked', (req, res) => {
 
   res.json({ revokedMessages: rows });
 });
+
+contactsRouter.get('/dormant', (req, res) => {
+  const minDays = Math.max(Number(req.query.days) || 14, 1);
+  const maxTier = Number(req.query.tier) || 2;
+  const dormantContacts = resurrectionService.findDormantThreads(minDays, maxTier);
+  res.json({ dormantContacts, minDays, maxTier });
+});
+
+contactsRouter.get('/:jid/dossier', async (req, res) => {
+  const jid = decodeURIComponent(req.params.jid);
+  try {
+    const dossier = await dossierService.getOrGenerateDossier(jid, false);
+    res.json({ success: true, dossier });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+contactsRouter.post('/:jid/dossier/refresh', async (req, res) => {
+  const jid = decodeURIComponent(req.params.jid);
+  try {
+    const dossier = await dossierService.getOrGenerateDossier(jid, true);
+    res.json({ success: true, dossier });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+

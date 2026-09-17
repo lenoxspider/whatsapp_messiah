@@ -10,6 +10,8 @@ import { remindCommand } from './commands/remind.command.js';
 import { askCommand } from './commands/ask.command.js';
 import { digestCommand } from './commands/digest.command.js';
 import { whoCommand } from './commands/who.command.js';
+import { dossierCommand } from './commands/dossier.command.js';
+import { dormantCommand } from './commands/dormant.command.js';
 
 export class SecondBrainDispatcher {
   private commands = new Map<string, CommandHandler>();
@@ -21,6 +23,8 @@ export class SecondBrainDispatcher {
     this.register(askCommand);
     this.register(digestCommand);
     this.register(whoCommand);
+    this.register(dossierCommand);
+    this.register(dormantCommand);
   }
 
   private register(command: CommandHandler): void {

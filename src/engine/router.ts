@@ -89,6 +89,10 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
       text.startsWith('📝 *Saved Note') ||
       text.startsWith('⏰ *REMINDER') ||
       text.startsWith('🔍 *Search Results') ||
+      text.startsWith('🔍 *IDENTITY RESOLVED') ||
+      text.startsWith('📋 *EXECUTIVE DOSSIER') ||
+      text.startsWith('❄️ *DORMANT THREADS') ||
+      text.startsWith('⏳ *Synthesizing') ||
       text.startsWith('❓ Unknown command') ||
       text.startsWith('🧠 *MESSIAH') ||
       text.startsWith('📥 Captured') ||

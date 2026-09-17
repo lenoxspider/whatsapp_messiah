@@ -107,7 +107,7 @@ export const AGENT_TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
 
 import { llmCallRepo } from '../db/repositories/llm_call.repo.js';
 
-function calculateCost(model: string, promptTokens: number, completionTokens: number): number {
+export function calculateCost(model: string, promptTokens: number, completionTokens: number): number {
   if (model.includes('gpt-4o-mini')) {
     return (promptTokens / 1_000_000) * 0.15 + (completionTokens / 1_000_000) * 0.60;
   } else if (model.includes('gpt-4o')) {
