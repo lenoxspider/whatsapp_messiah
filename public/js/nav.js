@@ -42,6 +42,25 @@ export function initNavigationStatus() {
     }
   }
 
+  // Add Lock/Logout button in header if not already present
+  const headerStatus = document.querySelector('.header-status');
+  if (headerStatus && !document.getElementById('btn-lock-console')) {
+    const lockBtn = document.createElement('button');
+    lockBtn.id = 'btn-lock-console';
+    lockBtn.className = 'btn btn-secondary';
+    lockBtn.style.cssText = 'padding: 0.3rem 0.65rem; font-size: 0.8rem; margin-left: 0.75rem; border-radius: var(--radius-sm);';
+    lockBtn.title = 'Lock Dashboard Console';
+    lockBtn.innerHTML = '🔒 Lock';
+    lockBtn.addEventListener('click', async () => {
+      try {
+        await apiRequest('/api/auth/logout', { method: 'POST' });
+      } catch {}
+      localStorage.removeItem('messiah_token');
+      window.location.href = '/login.html';
+    });
+    headerStatus.appendChild(lockBtn);
+  }
+
   updateStatus();
   setInterval(updateStatus, 3000);
 }

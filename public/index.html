@@ -142,6 +142,43 @@
         </div>
       </div>
     </div>
+
+    <!-- Move 2: Live Message Stream & Health Console -->
+    <div style="margin-top: 2rem;">
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <div class="card-title" style="margin-bottom: 0;">
+            <span>📡</span> Live Message Stream & Daemon Health
+          </div>
+          <span style="font-size: 0.78rem; color: var(--text-dim);">Live Sync (3s)</span>
+        </div>
+        <div class="card-subtitle">
+          Real-time record of inbound/outbound WhatsApp traffic, read receipts, and internal daemon diagnostics.
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 1.25rem; margin-top: 1.25rem;">
+          <!-- Column 1: Live Messages Feed -->
+          <div>
+            <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.75rem; letter-spacing: 0.05em;">
+              Recent WhatsApp Activity
+            </div>
+            <div id="live-messages-container" style="display: flex; flex-direction: column; gap: 0.6rem; max-height: 420px; overflow-y: auto; padding-right: 0.5rem;">
+              <div style="color: var(--text-dim); font-size: 0.85rem; padding: 1rem; text-align: center;">Loading message stream...</div>
+            </div>
+          </div>
+
+          <!-- Column 2: System Health / Reconnect Events -->
+          <div>
+            <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.75rem; letter-spacing: 0.05em;">
+              System Health & Diagnostics
+            </div>
+            <div id="live-logs-container" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 420px; overflow-y: auto; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.05); border-radius: var(--radius-sm); padding: 0.75rem; font-family: monospace; font-size: 0.8rem;">
+              <div style="color: var(--text-dim);">System initialized. Waiting for events...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </main>
 
   <script type="module" src="/js/nav.js"></script>

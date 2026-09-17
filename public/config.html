@@ -116,11 +116,22 @@
 
           <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-subtle);">
             <div>
-              <div style="font-weight: 600; color: #fff;">Enable Ghost-Handler</div>
-              <div style="font-size: 0.8rem; color: var(--text-muted);">Simulate typing & auto-reply as you to contacts</div>
+              <div style="font-weight: 600; color: #fff;">Enable Ghost Presence</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">Simulate typing delay & selective deafness (grey ticks)</div>
             </div>
             <label style="position: relative; display: inline-block; width: 48px; height: 26px;">
               <input type="checkbox" id="ghost-handler-toggle" style="opacity: 0; width: 0; height: 0;" checked />
+              <span style="position: absolute; cursor: pointer; inset: 0; background-color: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: 34px; transition: .3s;"></span>
+            </label>
+          </div>
+
+          <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-subtle);">
+            <div>
+              <div style="font-weight: 600; color: #34d399;">Autonomous Ghost Mode (Talks as You)</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">Active conversational reply engine with contact memory & quiet hours</div>
+            </div>
+            <label style="position: relative; display: inline-block; width: 48px; height: 26px;">
+              <input type="checkbox" id="autonomous-ghost-toggle" style="opacity: 0; width: 0; height: 0;" />
               <span style="position: absolute; cursor: pointer; inset: 0; background-color: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: 34px; transition: .3s;"></span>
             </label>
           </div>

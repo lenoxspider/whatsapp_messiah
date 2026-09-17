@@ -38,6 +38,10 @@ export function evaluateDisconnect(error: unknown, isRegistered: boolean = false
       console.log(`[Connection] Temporary disconnect (${statusCode}). Reconnecting...`);
       return { shouldReconnect: true, reason: 'Temporary drop' };
 
+    case DisconnectReason.connectionReplaced:
+      console.warn('[Connection] Connection replaced: another session took over. Halting auto-reconnect to avoid collision.');
+      return { shouldReconnect: false, reason: 'Connection replaced' };
+
     default:
       console.log(`[Connection] Disconnected with status code ${statusCode}. Attempting reconnect.`);
       return { shouldReconnect: true, reason: 'Unknown' };

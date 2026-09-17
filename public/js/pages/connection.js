@@ -105,8 +105,77 @@ export function initConnectionPage() {
     } catch {}
   }
 
+  // Poll Live Messages & Health Logs
+  const messagesContainer = document.getElementById('live-messages-container');
+  const logsContainer = document.getElementById('live-logs-container');
+
+  async function pollLiveActivity() {
+    try {
+      // 1. Fetch live messages
+      const msgData = await apiRequest('/api/messages/live?limit=25');
+      if (messagesContainer && msgData.messages) {
+        if (msgData.messages.length === 0) {
+          messagesContainer.innerHTML = '<div style="color: var(--text-dim); font-size: 0.85rem; padding: 1rem; text-align: center;">No messages logged yet.</div>';
+        } else {
+          messagesContainer.innerHTML = msgData.messages.map(m => {
+            const time = new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const isSelf = m.from_me;
+            const isRevoked = Boolean(m.is_revoked);
+            const senderLabel = isSelf ? '👤 You' : (m.contact_name ? `💬 ${m.contact_name}` : `📱 ${m.sender_jid.split('@')[0]}`);
+            const tierBadge = m.contact_tier ? `<span style="font-size: 0.7rem; padding: 0.1rem 0.35rem; border-radius: 4px; background: rgba(37,211,102,0.15); color: var(--primary);">Tier ${m.contact_tier}</span>` : '';
+            const revokedBadge = isRevoked ? `<span style="font-size: 0.7rem; padding: 0.1rem 0.35rem; border-radius: 4px; background: rgba(239,68,68,0.2); color: #f87171; font-weight: bold;">REVOKED</span>` : '';
+
+            return `
+              <div style="background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.05); border-radius: var(--radius-sm); padding: 0.6rem 0.75rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                  <div style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; font-weight: 600; color: ${isSelf ? 'var(--primary)' : 'var(--text-main)'};">
+                    ${senderLabel} ${tierBadge} ${revokedBadge}
+                  </div>
+                  <span style="font-size: 0.72rem; color: var(--text-dim);">${time}</span>
+                </div>
+                <div style="font-size: 0.84rem; color: ${isRevoked ? '#fca5a5' : 'var(--text-muted)'}; word-break: break-word;">
+                  ${escapeHtml(m.content || '[Media Attachment]')}
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+      }
+
+      // 2. Fetch live system logs
+      const logData = await apiRequest('/api/messages/logs?limit=25');
+      if (logsContainer && logData.logs) {
+        if (logData.logs.length === 0) {
+          logsContainer.innerHTML = '<div style="color: var(--text-dim);">System initialized. Listening for events...</div>';
+        } else {
+          logsContainer.innerHTML = logData.logs.map(l => {
+            const time = new Date(l.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            let color = 'var(--text-muted)';
+            if (l.level === 'error') color = '#f87171';
+            if (l.level === 'warn') color = '#fbbf24';
+            if (l.level === 'success') color = '#34d399';
+
+            return `<div style="color: ${color}; line-height: 1.4;"><span style="color: var(--text-dim); font-size: 0.72rem;">[${time}]</span> [${l.category}] ${escapeHtml(l.message)}</div>`;
+          }).join('');
+        }
+      }
+    } catch {}
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/[&<>'"]/g, tag => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      "'": '&#39;',
+      '"': '&quot;'
+    }[tag] || tag));
+  }
+
   setInterval(pollPairingState, 3000);
+  setInterval(pollLiveActivity, 3000);
   pollPairingState();
+  pollLiveActivity();
 }
 
 document.addEventListener('DOMContentLoaded', initConnectionPage);

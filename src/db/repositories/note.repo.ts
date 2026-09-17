@@ -67,6 +67,56 @@ export class NoteRepository {
     `);
     return stmt.all(limit) as unknown as NoteRecord[];
   }
+
+  searchNotesAdvanced(query: string, limit: number = 5): NoteRecord[] {
+    const stopwords = new Set([
+      'what', 'did', 'i', 'the', 'a', 'an', 'is', 'are', 'was', 'were', 'about', 'to', 'for', 'in', 'on', 'at',
+      'of', 'my', 'me', 'we', 'our', 'you', 'your', 'how', 'do', 'can', 'with', 'from', 'by', 'that', 'this',
+      'there', 'tell', 'show', 'give', 'know', 'remember', 'recall', 'find'
+    ]);
+
+    const words = query
+      .toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length > 1 && !stopwords.has(w));
+
+    if (words.length > 0) {
+      const ftsQuery = words.map(w => `${w}*`).join(' OR ');
+      try {
+        const stmt = this.db.prepare(`
+          SELECT n.id, n.tag, n.content, n.url, n.created_at
+          FROM notes_fts fts
+          JOIN notes n ON n.id = fts.rowid
+          WHERE notes_fts MATCH ?
+          ORDER BY rank
+          LIMIT ?
+        `);
+        const results = stmt.all(ftsQuery, limit) as unknown as NoteRecord[];
+        if (results && results.length > 0) {
+          return results;
+        }
+      } catch {}
+
+      for (const word of words) {
+        try {
+          const fallback = this.db.prepare(`
+            SELECT id, tag, content, url, created_at
+            FROM notes
+            WHERE content LIKE ? OR tag LIKE ?
+            ORDER BY created_at DESC
+            LIMIT ?
+          `).all(`%${word}%`, `%${word}%`, limit) as unknown as NoteRecord[];
+
+          if (fallback.length > 0) {
+            return fallback;
+          }
+        } catch {}
+      }
+    }
+
+    return this.getRecentNotes(limit);
+  }
 }
 
 export const noteRepo = new NoteRepository();

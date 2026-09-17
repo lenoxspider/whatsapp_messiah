@@ -17,6 +17,7 @@ configRouter.get('/', (req, res) => {
     discordConfigured: Boolean(env.discordWebhookUrl),
     discordWebhookMasked: env.discordWebhookUrl ? `${env.discordWebhookUrl.slice(0, 35)}...` : '',
     ghostHandlerEnabled: env.ghostHandlerEnabled,
+    autonomousGhost: env.autonomousGhost,
     typingSpeedMs: env.typingSpeedMs,
     maxTypingDelayMs: env.maxTypingDelayMs
   });
@@ -30,6 +31,7 @@ configRouter.post('/', (req, res) => {
     phoneNumber,
     ownerJid,
     ghostHandlerEnabled,
+    autonomousGhost,
     typingSpeedMs,
     maxTypingDelayMs
   } = req.body;
@@ -40,6 +42,7 @@ configRouter.post('/', (req, res) => {
   if (phoneNumber !== undefined) env.phoneNumber = phoneNumber.replace(/[^0-9]/g, '');
   if (ownerJid !== undefined) env.ownerJid = ownerJid;
   if (ghostHandlerEnabled !== undefined) env.ghostHandlerEnabled = Boolean(ghostHandlerEnabled);
+  if (autonomousGhost !== undefined) env.autonomousGhost = Boolean(autonomousGhost);
   if (typingSpeedMs !== undefined) env.typingSpeedMs = Number(typingSpeedMs);
   if (maxTypingDelayMs !== undefined) env.maxTypingDelayMs = Number(maxTypingDelayMs);
 
@@ -66,6 +69,7 @@ configRouter.post('/', (req, res) => {
     if (env.phoneNumber) setEnvVar('PHONE_NUMBER', env.phoneNumber);
     if (env.ownerJid) setEnvVar('OWNER_JID', env.ownerJid);
     setEnvVar('GHOST_HANDLER_ENABLED', env.ghostHandlerEnabled ? '1' : '0');
+    setEnvVar('AUTONOMOUS_GHOST', env.autonomousGhost ? '1' : '0');
     setEnvVar('TYPING_SPEED_MS', String(env.typingSpeedMs));
     setEnvVar('MAX_TYPING_DELAY_MS', String(env.maxTypingDelayMs));
 

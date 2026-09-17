@@ -8,6 +8,7 @@ import { initAuthState } from './auth.js';
 import { handlePairing } from './pairing.js';
 import { evaluateDisconnect } from './reconnect.js';
 import { dashboardState } from '../server/state.js';
+import { systemLogger } from '../server/logger.js';
 import { env } from '../config/env.js';
 
 export interface ConnectionCallbacks {
@@ -23,6 +24,16 @@ export function getActiveSocket(): WASocket | null {
 
 export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promise<WASocket> {
   dashboardState.setStatus('connecting');
+
+  if (activeSocket) {
+    try {
+      activeSocket.ev.removeAllListeners('connection.update');
+      activeSocket.ev.removeAllListeners('creds.update');
+      activeSocket.ev.removeAllListeners('messages.upsert');
+      activeSocket.end(undefined);
+    } catch {}
+    activeSocket = null;
+  }
 
   const { state, saveCreds } = await initAuthState();
   const { version } = await fetchLatestBaileysVersion();
@@ -73,6 +84,7 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
     if (connection === 'close') {
       const decision = evaluateDisconnect(lastDisconnect?.error, isRegistered);
       dashboardState.setStatus('disconnected', decision.reason);
+      systemLogger.warn('Connection', `Socket closed: ${decision.reason}. ${decision.shouldReconnect ? 'Reconnecting...' : 'Idle'}`);
 
       if (decision.shouldReconnect) {
         setTimeout(() => startWhatsAppSocket(callbacks), 4000);
@@ -85,8 +97,10 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
         env.ownerJid = `${phone}@s.whatsapp.net`;
         dashboardState.setPairedPhone(phone);
         console.log(`\n✅ [Connection] Connected as Owner: +${phone} (${env.ownerJid})`);
+        systemLogger.success('Connection', `Connected as Owner +${phone}`);
       } else {
         console.log('\n✅ [Connection] WhatsApp Messiah is connected and listening.');
+        systemLogger.success('Connection', 'WhatsApp Messiah connected and listening.');
       }
       dashboardState.setStatus('connected');
       callbacks.onReady(sock);

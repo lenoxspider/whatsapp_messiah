@@ -13,6 +13,8 @@ export interface AppConfig {
   openaiModel: string;
   discordWebhookUrl: string;
   ghostHandlerEnabled: boolean;
+  autonomousGhost: boolean;
+  dashboardPassword: string;
   typingSpeedMs: number;
   maxTypingDelayMs: number;
 }
@@ -27,6 +29,8 @@ function parseEnv(): AppConfig {
   const openaiModel = process.env.OPENAI_MODEL || 'gpt-4o';
   const discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL || '';
   const ghostHandlerEnabled = process.env.GHOST_HANDLER_ENABLED !== '0';
+  const autonomousGhost = process.env.AUTONOMOUS_GHOST === '1' || process.env.AUTONOMOUS_GHOST === 'true';
+  const dashboardPassword = process.env.DASHBOARD_PASSWORD || '';
   const typingSpeedMs = Number(process.env.TYPING_SPEED_MS) || 45;
   const maxTypingDelayMs = Number(process.env.MAX_TYPING_DELAY_MS) || 8000;
 
@@ -40,6 +44,8 @@ function parseEnv(): AppConfig {
     openaiModel,
     discordWebhookUrl,
     ghostHandlerEnabled,
+    autonomousGhost,
+    dashboardPassword,
     typingSpeedMs,
     maxTypingDelayMs
   };

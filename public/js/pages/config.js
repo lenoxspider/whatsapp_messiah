@@ -11,6 +11,7 @@ export function initConfigPage() {
   const typingSpeedInput = document.getElementById('typing-speed-input');
   const maxDelayInput = document.getElementById('max-delay-input');
   const ghostToggle = document.getElementById('ghost-handler-toggle');
+  const autonomousToggle = document.getElementById('autonomous-ghost-toggle');
 
   const btnTestOpenai = document.getElementById('btn-test-openai');
   const btnTestDiscord = document.getElementById('btn-test-discord');
@@ -27,6 +28,7 @@ export function initConfigPage() {
       if (cfg.typingSpeedMs) typingSpeedInput.value = cfg.typingSpeedMs;
       if (cfg.maxTypingDelayMs) maxDelayInput.value = cfg.maxTypingDelayMs;
       if (ghostToggle) ghostToggle.checked = Boolean(cfg.ghostHandlerEnabled);
+      if (autonomousToggle) autonomousToggle.checked = Boolean(cfg.autonomousGhost);
     } catch (err) {
       showToast('Failed to load configuration: ' + err.message, 'error');
     }
@@ -43,7 +45,8 @@ export function initConfigPage() {
       ownerJid: ownerJidInput.value.trim(),
       typingSpeedMs: Number(typingSpeedInput.value),
       maxTypingDelayMs: Number(maxDelayInput.value),
-      ghostHandlerEnabled: ghostToggle.checked
+      ghostHandlerEnabled: ghostToggle.checked,
+      autonomousGhost: autonomousToggle ? autonomousToggle.checked : false
     };
 
     try {
