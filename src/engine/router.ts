@@ -8,6 +8,8 @@ import { secondBrainDispatcher } from './second_brain/dispatcher.js';
 import { messiahHandler } from './messiah/handler.js';
 import type { IncomingMessageContext } from '../types/message.js';
 import { env } from '../config/env.js';
+import { openaiService } from '../services/openai.service.js';
+import { noteRepo } from '../db/repositories/note.repo.js';
 
 export function extractMessageText(message: any): string {
   if (!message) return '';
@@ -92,42 +94,12 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
       isViewOnce
     });
 
-    // Asynchronously extract and decrypt media (so text routing remains instant)
-    mediaExtractor.extractAndSaveMedia(msg).then(async (extracted) => {
-      if (!extracted) return;
-
-      messageRepo.updateMedia(msgId, extracted.filePath, extracted.mimeType, extracted.isViewOnce);
-
-      // If media is from someone else and Discord forwarding is enabled:
-      if (!fromMe && env.forwardMediaToDiscord) {
-        const contact = contactRepo.getContact(senderJid);
-        if (extracted.isViewOnce) {
-          console.log(`[Anti-ViewOnce] Ephemeral View-Once from ${senderPhone} decrypted, forwarding immediately to Discord.`);
-          await discordService.sendViewOnceAlert({
-            senderPhone,
-            senderName: contact?.name || null,
-            caption: extracted.caption || text || undefined,
-            timestamp: Number(msg.messageTimestamp) * 1000 || Date.now(),
-            buffer: extracted.buffer,
-            fileName: extracted.fileName,
-            mimeType: extracted.mimeType
-          });
-        } else {
-          console.log(`[Media Inbound] Media from ${senderPhone} saved to ${extracted.fileName}, forwarding to Discord.`);
-          await discordService.sendIncomingMediaAlert({
-            senderPhone,
-            senderName: contact?.name || null,
-            caption: extracted.caption || text || undefined,
-            timestamp: Number(msg.messageTimestamp) * 1000 || Date.now(),
-            buffer: extracted.buffer,
-            fileName: extracted.fileName,
-            mimeType: extracted.mimeType
-          });
-        }
-      }
-    }).catch(err => {
-      console.warn(`[Media Extraction Error] ${msgId}: ${err.message}`);
-    });
+    // Determine self-chat identity
+    const isSelfChat = fromMe && (
+      (myJid && chatJid === myJid) ||
+      (myPhone && chatJid.startsWith(myPhone)) ||
+      (myLid && chatJid === myLid)
+    );
 
     const ctx: IncomingMessageContext = {
       id: msgId,
@@ -143,14 +115,83 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
       isViewOnce
     };
 
+    // Asynchronously extract and decrypt media (so text routing remains instant)
+    mediaExtractor.extractAndSaveMedia(msg).then(async (extracted) => {
+      if (!extracted) return;
+
+      messageRepo.updateMedia(msgId, extracted.filePath, extracted.mimeType, extracted.isViewOnce);
+
+      // Check if media is an audio / voice note
+      const isAudio =
+        extracted.mimeType.startsWith('audio/') ||
+        extracted.fileName.endsWith('.ogg') ||
+        extracted.fileName.endsWith('.mp3') ||
+        Boolean(msg.message?.audioMessage);
+
+      let audioTranscript = '';
+
+      if (isAudio && openaiService.isConfigured()) {
+        try {
+          console.log(`[Whisper] Transcribing audio note (${extracted.fileName})...`);
+          audioTranscript = await openaiService.transcribeAudio(extracted.buffer, extracted.fileName, extracted.mimeType);
+          if (audioTranscript) {
+            console.log(`[Whisper] Transcription result: "${audioTranscript}"`);
+            messageRepo.updateContent(msgId, `[Voice Note]: ${audioTranscript}`);
+
+            // If voice note was sent to Self-Chat: Auto-save as a Second Brain voice note!
+            if (isSelfChat) {
+              const savedNote = noteRepo.saveNote(audioTranscript, 'voice');
+              await sock.sendMessage(chatJid, {
+                text: `🎙️ *Voice Note Transcribed & Saved* [#${savedNote.id}]\n\n"${audioTranscript}"`
+              });
+            } else if (!fromMe && !isGroup) {
+              // External contact sent voice note: feed transcription into Messiah Ghost handler
+              const ghostCtx = { ...ctx, text: audioTranscript };
+              await messiahHandler.handleContactMessage(sock, ghostCtx);
+            }
+          }
+        } catch (whisperErr: any) {
+          console.warn(`[Whisper Error] Failed to transcribe voice note: ${whisperErr.message}`);
+        }
+      }
+
+      // If media is from someone else and Discord forwarding is enabled:
+      if (!fromMe && env.forwardMediaToDiscord) {
+        const contact = contactRepo.getContact(senderJid);
+        const discordCaption = audioTranscript
+          ? `🎙️ [Transcription]: ${audioTranscript}`
+          : (extracted.caption || text || undefined);
+
+        if (extracted.isViewOnce) {
+          console.log(`[Anti-ViewOnce] Ephemeral View-Once from ${senderPhone} decrypted, forwarding immediately to Discord.`);
+          await discordService.sendViewOnceAlert({
+            senderPhone,
+            senderName: contact?.name || null,
+            caption: discordCaption,
+            timestamp: Number(msg.messageTimestamp) * 1000 || Date.now(),
+            buffer: extracted.buffer,
+            fileName: extracted.fileName,
+            mimeType: extracted.mimeType
+          });
+        } else {
+          console.log(`[Media Inbound] Media from ${senderPhone} saved to ${extracted.fileName}, forwarding to Discord.`);
+          await discordService.sendIncomingMediaAlert({
+            senderPhone,
+            senderName: contact?.name || null,
+            caption: discordCaption,
+            timestamp: Number(msg.messageTimestamp) * 1000 || Date.now(),
+            buffer: extracted.buffer,
+            fileName: extracted.fileName,
+            mimeType: extracted.mimeType
+          });
+        }
+      }
+    }).catch(err => {
+      console.warn(`[Media Extraction Error] ${msgId}: ${err.message}`);
+    });
+
     // 2. SELF-CHAT / SECOND BRAIN ROUTING:
     // Matches if message was sent from your account to yourself OR if you type any '!' command in any DM
-    const isSelfChat = fromMe && (
-      (myJid && chatJid === myJid) ||
-      (myPhone && chatJid.startsWith(myPhone)) ||
-      (myLid && chatJid === myLid)
-    );
-
     const isCommand = fromMe && text.startsWith('!');
 
     if ((isSelfChat || isCommand) && text) {

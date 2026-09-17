@@ -1,49 +1,151 @@
 import type { CommandHandler, CommandContext } from '../../../types/command.js';
 import { openaiService } from '../../../services/openai.service.js';
 import { noteRepo } from '../../../db/repositories/note.repo.js';
+import { reminderRepo } from '../../../db/repositories/reminder.repo.js';
+import { contactRepo } from '../../../db/repositories/contact.repo.js';
+import { messageRepo } from '../../../db/repositories/message.repo.js';
 
 export const askCommand: CommandHandler = {
   name: 'ask',
-  description: 'Ask OpenAI a question with relevant context from your saved notes',
-  usage: '!ask <question>',
+  description: 'Autonomous Second Brain AI Agent with direct tool-calling over private SQLite',
+  usage: '!ask <question or instruction>',
 
   async execute({ sock, message, fullArgs }: CommandContext): Promise<void> {
+    // 1. Strict Security Guard: Only the Owner can execute tool-calling agents
+    if (!message.fromMe) {
+      console.warn(`[Security Alert] Unauthorized attempt to invoke !ask from non-owner: ${message.senderJid}`);
+      return;
+    }
+
     const query = fullArgs.trim();
     if (!query) {
       await sock.sendMessage(message.chatJid, {
-        text: '⚠️ Usage: `!ask <your question>`'
+        text: '⚠️ Usage: `!ask <your question or instruction>`\n\n_Examples:_\n• `!ask What did I decide about the VPS?`\n• `!ask Remind me Friday at 2pm to follow up with Kofi`\n• `!ask What deleted messages do we have from John?`\n• `!ask Set contact +233501234567 to Tier 1 VIP`'
       });
       return;
     }
 
-    // Retrieve matching or recent vault notes
-    const relatedNotes = noteRepo.searchNotesAdvanced(query, 5);
-    const notesContext = relatedNotes
-      .map((n, i) => `• [${n.tag}] ${n.content} (${new Date(n.created_at).toLocaleDateString()})`)
-      .join('\n');
-
-    // Retrieve active pending reminders if query asks about tasks/schedule/reminders
-    let reminderContext = '';
-    const lower = query.toLowerCase();
-    if (lower.includes('remind') || lower.includes('task') || lower.includes('todo') || lower.includes('schedule') || lower.includes('due') || lower.includes('today') || lower.includes('tomorrow')) {
-      const db = (noteRepo as any).db;
-      try {
-        const pending = db.prepare("SELECT task, trigger_at FROM reminders WHERE status = 'pending' ORDER BY trigger_at ASC LIMIT 5").all();
-        if (pending && pending.length > 0) {
-          reminderContext = `\nActive Reminders in Queue:\n` + pending.map((r: any) => `• "${r.task}" scheduled for ${new Date(r.trigger_at).toLocaleString()}`).join('\n');
-        }
-      } catch {}
+    if (!openaiService.isConfigured()) {
+      await sock.sendMessage(message.chatJid, {
+        text: '⚠️ *OpenAI Key Missing*\n\nPlease set your `OPENAI_API_KEY` in `.env` or via your Web Operations Console (`/config`).'
+      });
+      return;
     }
 
-    const fullContext = (notesContext ? `Notes Archive:\n${notesContext}` : '') + (reminderContext ? `\n${reminderContext}` : '');
+    // 2. Tool Executor mapping agent function calls directly to SQLite repositories
+    const toolExecutor = async (name: string, args: any): Promise<any> => {
+      console.log(`[Agent Tool Call] name="${name}" args=${JSON.stringify(args)}`);
+
+      switch (name) {
+        case 'search_vault': {
+          const limit = Math.min(Number(args.limit) || 5, 10);
+          const notes = noteRepo.searchNotesAdvanced(String(args.query || ''), limit);
+          return notes.map(n => ({
+            id: n.id,
+            tag: n.tag,
+            content: n.content,
+            created_at: new Date(n.created_at).toISOString()
+          }));
+        }
+
+        case 'create_note': {
+          const content = String(args.content || '').trim();
+          if (!content) throw new Error('Content is required');
+          const tag = String(args.tag || 'inbox').trim().replace(/^#/, '');
+          const saved = noteRepo.saveNote(content, tag);
+          return { id: saved.id, tag: saved.tag, content: saved.content, status: 'saved' };
+        }
+
+        case 'set_reminder': {
+          const task = String(args.task || '').trim();
+          if (!task) throw new Error('Task description is required');
+          const timeMs = Date.parse(args.trigger_at_iso);
+          if (isNaN(timeMs)) throw new Error(`Invalid trigger_at_iso date format: "${args.trigger_at_iso}"`);
+          const r = reminderRepo.createReminder(task, timeMs);
+          return {
+            id: r.id,
+            task: r.task,
+            trigger_at: new Date(r.trigger_at).toISOString(),
+            status: 'scheduled'
+          };
+        }
+
+        case 'list_reminders': {
+          const limit = Math.min(Number(args.limit) || 10, 25);
+          const reminders = reminderRepo.getPendingReminders().slice(0, limit);
+          return reminders.map(r => ({
+            id: r.id,
+            task: r.task,
+            trigger_at: new Date(r.trigger_at).toISOString(),
+            status: r.status
+          }));
+        }
+
+        case 'get_contact': {
+          const q = String(args.query || '').trim();
+          const contact = contactRepo.searchContact(q);
+          if (!contact) {
+            return { found: false, message: `No contact found matching "${q}"` };
+          }
+          return {
+            found: true,
+            jid: contact.jid,
+            phone: contact.phone,
+            name: contact.name,
+            tier: contact.tier,
+            last_interaction: contact.last_interaction ? new Date(contact.last_interaction).toISOString() : null
+          };
+        }
+
+        case 'set_tier': {
+          const phone = String(args.phone || '').trim();
+          const tier = Number(args.tier);
+          if (!phone || isNaN(tier) || tier < 1 || tier > 5) {
+            throw new Error('Valid phone and tier (1-5) required');
+          }
+          let contact = contactRepo.searchContact(phone);
+          if (!contact) {
+            const cleanPhone = phone.replace(/[^0-9]/g, '');
+            const jid = `${cleanPhone}@s.whatsapp.net`;
+            contact = contactRepo.upsertContact(jid, cleanPhone, null, tier as any);
+          } else {
+            contactRepo.setContactTier(contact.jid, tier as any);
+          }
+          return {
+            success: true,
+            contact_jid: contact.jid,
+            name: contact.name,
+            tier
+          };
+        }
+
+        case 'search_revoked': {
+          const limit = Math.min(Number(args.limit) || 5, 10);
+          const revoked = messageRepo.searchRevoked(args.query ? String(args.query) : undefined, limit);
+          return revoked.map(m => ({
+            id: m.id,
+            sender: m.contact_name || m.sender_jid,
+            content: m.content || (m.is_view_once ? '[View-Once Media]' : '[Media]'),
+            timestamp: new Date(m.timestamp).toISOString(),
+            is_view_once: Boolean(m.is_view_once),
+            has_media: Boolean(m.media_path)
+          }));
+        }
+
+        default:
+          throw new Error(`Unknown tool "${name}"`);
+      }
+    };
 
     try {
-      const reply = await openaiService.askSecondBrain(query, fullContext);
-      await sock.sendMessage(message.chatJid, { text: reply });
+      const responseText = await openaiService.runAgentLoop(query, toolExecutor);
+      await sock.sendMessage(message.chatJid, { text: responseText });
     } catch (err: any) {
+      console.error(`[Agent Execution Error]:`, err);
       await sock.sendMessage(message.chatJid, {
-        text: `❌ OpenAI Error: ${err.message || 'Failed to generate response'}`
+        text: `❌ *Agent Error*: ${err.message || 'Failed to process request.'}`
       });
     }
   }
 };
+

@@ -74,6 +74,27 @@ export class ContactRepository {
     const stmt = this.db.prepare(`UPDATE contacts SET ${sets.join(', ')} WHERE jid = ?`);
     stmt.run(...values);
   }
+
+  searchContact(query: string): ContactRecord | null {
+    const cleanPhone = query.replace(/[^0-9]/g, '');
+    const cleanText = query.trim();
+    const stmt = this.db.prepare(`
+      SELECT * FROM contacts 
+      WHERE jid LIKE ? OR phone LIKE ? OR name LIKE ?
+      LIMIT 1
+    `);
+    const row = stmt.get(`%${cleanText}%`, `%${cleanPhone || cleanText}%`, `%${cleanText}%`) as unknown as ContactRecord | undefined;
+    return row || null;
+  }
+
+  getRecentContacts(limit: number = 10): ContactRecord[] {
+    const stmt = this.db.prepare(`
+      SELECT * FROM contacts 
+      ORDER BY last_interaction DESC 
+      LIMIT ?
+    `);
+    return stmt.all(limit) as unknown as ContactRecord[];
+  }
 }
 
 export const contactRepo = new ContactRepository();

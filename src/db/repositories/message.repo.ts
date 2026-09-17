@@ -58,6 +58,43 @@ export class MessageRepository {
     return this.getMessageById(id);
   }
 
+  updateContent(id: string, content: string): void {
+    const stmt = this.db.prepare(`
+      UPDATE messages
+      SET content = ?
+      WHERE id = ?
+    `);
+    stmt.run(content, id);
+  }
+
+  searchRevoked(query?: string, limit: number = 5): any[] {
+    if (query && query.trim()) {
+      const q = `%${query.trim()}%`;
+      const stmt = this.db.prepare(`
+        SELECT m.id, m.chat_jid, m.sender_jid, m.content, m.timestamp, m.is_view_once, m.media_path,
+               c.name as contact_name, c.tier as contact_tier
+        FROM messages m
+        LEFT JOIN contacts c ON m.sender_jid = c.jid
+        WHERE (m.is_revoked = 1 OR m.is_view_once = 1)
+          AND (m.content LIKE ? OR c.name LIKE ? OR m.sender_jid LIKE ?)
+        ORDER BY m.timestamp DESC
+        LIMIT ?
+      `);
+      return stmt.all(q, q, q, limit);
+    }
+
+    const stmt = this.db.prepare(`
+      SELECT m.id, m.chat_jid, m.sender_jid, m.content, m.timestamp, m.is_view_once, m.media_path,
+             c.name as contact_name, c.tier as contact_tier
+      FROM messages m
+      LEFT JOIN contacts c ON m.sender_jid = c.jid
+      WHERE m.is_revoked = 1 OR m.is_view_once = 1
+      ORDER BY m.timestamp DESC
+      LIMIT ?
+    `);
+    return stmt.all(limit);
+  }
+
   getMessageById(id: string): StoredMessage | null {
     const stmt = this.db.prepare(`SELECT * FROM messages WHERE id = ?`);
     const row = stmt.get(id) as unknown as StoredMessage | undefined;
