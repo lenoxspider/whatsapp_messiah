@@ -1,9 +1,11 @@
 import fs from 'node:fs';
 import { env } from '../config/env.js';
+import { systemLogger } from '../server/logger.js';
 
 export class DiscordService {
   async sendWebhook(payload: any): Promise<boolean> {
     if (!env.discordWebhookUrl) {
+      systemLogger.warn('Discord', 'Webhook dispatch skipped: DISCORD_WEBHOOK_URL is not configured.');
       return false;
     }
 
@@ -27,6 +29,7 @@ export class DiscordService {
     mimeType: string
   ): Promise<boolean> {
     if (!env.discordWebhookUrl) {
+      systemLogger.warn('Discord', 'Media/View-Once dispatch skipped: DISCORD_WEBHOOK_URL is not configured.');
       return false;
     }
 
