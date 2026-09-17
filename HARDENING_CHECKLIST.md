@@ -13,11 +13,11 @@
 - [x] **Log Stream Sanitize & Gate**: Redacts authentication tokens, bearer headers, and raw base64 payload streams from the API log output.
 - [x] **Audit Logging**: Structured audit logging (`systemLogger.audit`) records timestamp, IP address, and administrative action for pairing, resets, and reconnects.
 
-### 2. 🕵️ Status Stealer Redesign (Capture-On-Receipt)
-- [ ] **Eliminate Trigger-and-Delete**: Remove the outward reply trigger (e.g. `_nice` / `!😶🌫️`) and post-delete step entirely to eliminate detection footprint.
-- [ ] **Capture-On-Receipt Pipeline**: Intercept `status@broadcast` JID inbound events directly to store text, photos, and videos automatically on arrival.
-- [ ] **LID Resolution & Caching**: Correctly map `@lid` sender identities for status updates to phone numbers/names.
-- [ ] **Search Index Isolation**: Tag status items with `was_status = 1` and exclude them from `!ask` Second Brain RAG search context by default.
+### 2. 🕵️ Status Stealer Redesign (Command-Driven Stealth Capture-On-Receipt)
+- [x] **Eliminate Trigger-and-Delete**: Removed the outward reply trigger (`_nice` / `!😶🌫️`) and post-delete step entirely to eliminate detection footprint (100% stealth).
+- [x] **Capture-On-Receipt Pipeline**: Intercepts `status@broadcast` JID inbound events directly to store text, photos, and videos automatically on arrival for targeted contacts.
+- [x] **Target Management Commands & API**: Managed dynamically via Self-Chat (`!steal add/remove/list`) and REST API endpoints (`/api/extras/targets`).
+- [x] **Search Index Isolation**: Status items are isolated in `captured_statuses` and excluded from Second Brain RAG search context by default.
 
 ### 3. ⏰ Scheduler State Machine & Crash Recovery
 - [ ] **Atomic Claim State Machine**: Upgrade `reminders` DB schema to use explicit status states: `pending` ➔ `claimed` ➔ `sent` (or `failed`).

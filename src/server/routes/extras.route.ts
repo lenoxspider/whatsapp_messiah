@@ -13,11 +13,48 @@ import { dashboardState } from '../state.js';
 
 import { systemLogger } from '../logger.js';
 
+import { statusTargetRepo } from '../../db/repositories/status_target.repo.js';
+
 const execAsync = promisify(exec);
 const isWin = process.platform === 'win32';
 const npmCmd = isWin ? 'npm.cmd' : 'npm';
 
 export const extrasRouter = Router();
+
+// GET target contacts list
+extrasRouter.get('/targets', (req, res) => {
+  const targets = statusTargetRepo.getAllTargets();
+  res.json({ success: true, targets });
+});
+
+// ADD target contact
+extrasRouter.post('/targets', (req, res) => {
+  const { phone, name } = req.body || {};
+  if (!phone || typeof phone !== 'string') {
+    return res.status(400).json({ error: 'Phone number is required.' });
+  }
+  const clean = phone.replace(/[^0-9]/g, '');
+  if (clean.length < 7) {
+    return res.status(400).json({ error: 'Valid phone number with country code is required.' });
+  }
+
+  statusTargetRepo.addTarget(clean, name || null);
+  const clientIp = req.ip || req.socket.remoteAddress || '127.0.0.1';
+  systemLogger.audit('STATUS_TARGET_ADD', clientIp, `Added target +${clean} to status capture list`);
+
+  res.json({ success: true, message: `Target +${clean} added successfully.`, targets: statusTargetRepo.getAllTargets() });
+});
+
+// DELETE target contact
+extrasRouter.delete('/targets/:phone', (req, res) => {
+  const phone = req.params.phone;
+  const clean = phone.replace(/[^0-9]/g, '');
+  const removed = statusTargetRepo.removeTarget(clean);
+  const clientIp = req.ip || req.socket.remoteAddress || '127.0.0.1';
+  systemLogger.audit('STATUS_TARGET_REMOVE', clientIp, `Removed target +${clean} from status capture list`);
+
+  res.json({ success: removed, message: removed ? `Target +${clean} removed.` : 'Target not found.' });
+});
 
 // GET current covert ops / extras config
 extrasRouter.get('/config', (req, res) => {

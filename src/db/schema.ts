@@ -164,6 +164,12 @@ export function initializeDatabaseSchema(): void {
 
     CREATE INDEX IF NOT EXISTS idx_agent_tasks_contact ON agent_tasks(contact_jid, status);
     CREATE INDEX IF NOT EXISTS idx_agent_tasks_scheduled ON agent_tasks(scheduled_at, status);
+
+    CREATE TABLE IF NOT EXISTS status_targets (
+      phone TEXT PRIMARY KEY,
+      name TEXT,
+      added_at INTEGER NOT NULL
+    );
   `);
 
   // Safe migration for existing SQLite database
