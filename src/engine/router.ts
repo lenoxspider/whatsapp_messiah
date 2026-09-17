@@ -69,8 +69,9 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
     const chatJid = msg.key.remoteJid || '';
     const fromMe = Boolean(msg.key.fromMe);
     const isGroup = chatJid.endsWith('@g.us');
-    const senderJid = isGroup ? (msg.key.participant || '') : chatJid;
-    const senderPhone = senderJid.split('@')[0];
+    const isStatus = chatJid === 'status@broadcast';
+    const senderJid = (isGroup || isStatus) ? (msg.key.participant || chatJid) : chatJid;
+    const senderPhone = senderJid.split('@')[0].replace(/[^0-9]/g, '');
     const messageType = Object.keys(msg.message)[0] || 'unknown';
 
     // Ignore bot's own output to prevent infinite loops
