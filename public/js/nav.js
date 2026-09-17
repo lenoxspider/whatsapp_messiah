@@ -53,6 +53,10 @@ function ensureIconRail(currentPath) {
         <span class="rail-icon">👥</span>
         <span class="rail-label">Contacts</span>
       </a>
+      <a href="/agent.html" class="rail-item ${currentPath.includes('agent') ? 'active' : ''}" title="Agent Missions & Autopilot Hub">
+        <span class="rail-icon">🤖</span>
+        <span class="rail-label">Agent</span>
+      </a>
       <a href="/extras.html" class="rail-item ${currentPath.includes('extras') ? 'active' : ''}" title="Covert Ops & Extras">
         <span class="rail-icon">🥷</span>
         <span class="rail-label">Extras</span>

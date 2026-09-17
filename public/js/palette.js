@@ -59,6 +59,7 @@ class CommandPalette {
       { id: 'nav-console', label: 'Go to Operations Console', category: 'Navigation', shortcut: 'G C', action: () => window.location.href = '/' },
       { id: 'nav-vault', label: 'Go to Second Brain Vault', category: 'Navigation', shortcut: 'G V', action: () => window.location.href = '/vault.html' },
       { id: 'nav-contacts', label: 'Go to Contacts & Tier Board', category: 'Navigation', shortcut: 'G T', action: () => window.location.href = '/contacts.html' },
+      { id: 'nav-agent', label: 'Go to Agent Missions & Autopilot', category: 'Navigation', shortcut: 'G A', action: () => window.location.href = '/agent.html' },
       { id: 'nav-config', label: 'Go to Config & Persona Studio', category: 'Navigation', shortcut: 'G S', action: () => window.location.href = '/config.html' },
       { id: 'act-note', label: 'Quick Add Note to Vault', category: 'Actions', shortcut: 'N', action: () => this.quickAddNote() },
       { id: 'act-density', label: 'Toggle Density (Compact / Comfortable)', category: 'Display', shortcut: 'D', action: () => this.toggleDensity() },

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Messiah | Agent Mission Control</title>
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/navbar.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <style>
+    .mission-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1rem 1.25rem;
+      margin-bottom: 0.85rem;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+    .mission-card:hover {
+      border-color: var(--border-focus);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    }
+    .mission-card.status-in_progress {
+      border-left: 4px solid var(--accent-cyan);
+    }
+    .mission-card.status-pending {
+      border-left: 4px solid var(--accent-amber);
+    }
+    .mission-card.status-completed {
+      border-left: 4px solid var(--accent-green);
+    }
+    .mission-card.status-cancelled {
+      border-left: 4px solid var(--text-dim);
+      opacity: 0.75;
+    }
+    .switch-label {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      cursor: pointer;
+    }
+    .switch-label input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .switch-slider {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: var(--bg-tertiary);
+      border: 1px solid var(--border-subtle);
+      transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: 24px;
+    }
+    .switch-slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: var(--text-dim);
+      transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: 50%;
+    }
+    input:checked + .switch-slider {
+      background-color: rgba(0, 240, 255, 0.2);
+      border-color: var(--accent-cyan);
+    }
+    input:checked + .switch-slider:before {
+      transform: translateX(20px);
+      background-color: var(--accent-cyan);
+      box-shadow: 0 0 8px var(--accent-cyan);
+    }
+    .master-switch-card {
+      background: linear-gradient(135deg, rgba(16, 24, 38, 0.85) 0%, rgba(20, 32, 52, 0.9) 100%);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+    }
+    .stat-pill {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.5rem 0.85rem;
+      display: flex;
+      flex-direction: column;
+      min-width: 130px;
+    }
+  </style>
+</head>
+<body>
+
+  <main class="main-content" style="padding: 1.5rem; max-width: 1400px; margin: 0 auto; width: 100%;">
+    
+    <!-- Top Operations Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h1 style="font-size: 1.45rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.6rem;">
+          <span>🤖</span> AGENT MISSION CONTROL
+        </h1>
+        <p style="color: var(--text-muted); font-size: 0.84rem; margin-top: 0.2rem;">Autonomous autopilot orchestration, proactive contact reach-outs, and multi-turn goal steering.</p>
+      </div>
+
+      <div style="display: flex; gap: 0.75rem; align-items: center;">
+        <button id="btn-create-task-main" class="btn btn-primary" style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; padding: 0.45rem 1rem;">
+          <span>🎯</span> + New Agent Mission
+        </button>
+      </div>
+    </div>
+
+    <!-- Master Autopilot Banner & Controls -->
+    <div class="master-switch-card">
+      <div style="display: flex; align-items: center; gap: 1.25rem;">
+        <label class="switch-label" title="Toggle Global Autopilot Mode">
+          <input type="checkbox" id="master-autopilot-toggle">
+          <span class="switch-slider"></span>
+        </label>
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <span style="font-size: 1.05rem; font-weight: 700; color: var(--text-main);">Master Autopilot (Global Ghost Mode)</span>
+            <span id="master-status-pill" class="badge" style="background: rgba(255,255,255,0.06); color: var(--text-dim); font-size: 0.72rem; padding: 0.2rem 0.6rem; border-radius: 12px; font-weight: 600;">
+              ⚪ IDLE
+            </span>
+          </div>
+          <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0.25rem;">
+            When enabled, Messiah answers incoming messages across all contacts autonomously in your persona with humanized typing delay. When disabled, Messiah only replies to contacts where Autopilot is individually switched ON or where active missions are assigned.
+          </p>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Strip -->
+      <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        <div class="stat-pill">
+          <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-family: var(--font-mono);">Active Missions</span>
+          <span id="stat-active-tasks" class="tabular-nums" style="font-size: 1.3rem; font-weight: 700; color: var(--accent-cyan); margin-top: 0.15rem;">0</span>
+        </div>
+        <div class="stat-pill">
+          <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-family: var(--font-mono);">Autopilot Contacts</span>
+          <span id="stat-auto-contacts" class="tabular-nums" style="font-size: 1.3rem; font-weight: 700; color: var(--accent-green); margin-top: 0.15rem;">0</span>
+        </div>
+        <div class="stat-pill">
+          <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-family: var(--font-mono);">Completed Goals</span>
+          <span id="stat-completed-tasks" class="tabular-nums" style="font-size: 1.3rem; font-weight: 700; color: var(--text-main); margin-top: 0.15rem;">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- View Selector Tabs -->
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); margin-bottom: 1.25rem;">
+      <div style="display: flex; gap: 0.5rem;">
+        <button id="tab-btn-missions" class="tab-btn active" style="background: transparent; border: none; border-bottom: 2px solid var(--accent-cyan); color: var(--accent-cyan); font-weight: 600; font-size: 0.88rem; padding: 0.65rem 1rem; cursor: pointer;">
+          🎯 Missions & Tasks (<span id="count-tab-missions" class="tabular-nums">0</span>)
+        </button>
+        <button id="tab-btn-contacts" class="tab-btn" style="background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text-muted); font-weight: 600; font-size: 0.88rem; padding: 0.65rem 1rem; cursor: pointer;">
+          👥 Autopilot Contacts (<span id="count-tab-contacts" class="tabular-nums">0</span>)
+        </button>
+        <button id="tab-btn-telemetry" class="tab-btn" style="background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text-muted); font-weight: 600; font-size: 0.88rem; padding: 0.65rem 1rem; cursor: pointer;">
+          📡 Mission Telemetry & Alerts
+        </button>
+      </div>
+    </div>
+
+    <!-- VIEW 1: MISSIONS & TASKS -->
+    <div id="view-missions">
+      <!-- Filter Bar -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+        <div style="display: flex; gap: 0.35rem; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 2px;">
+          <button class="btn btn-filter active" data-filter="all" style="background: var(--bg-elevated); color: var(--accent-cyan); border: none; padding: 0.3rem 0.85rem; font-size: 0.78rem; font-weight: 600; border-radius: var(--radius-sm); cursor: pointer;">All</button>
+          <button class="btn btn-filter" data-filter="in_progress" style="background: transparent; color: var(--text-muted); border: none; padding: 0.3rem 0.85rem; font-size: 0.78rem; font-weight: 600; border-radius: var(--radius-sm); cursor: pointer;">In Progress</button>
+          <button class="btn btn-filter" data-filter="pending" style="background: transparent; color: var(--text-muted); border: none; padding: 0.3rem 0.85rem; font-size: 0.78rem; font-weight: 600; border-radius: var(--radius-sm); cursor: pointer;">Pending</button>
+          <button class="btn btn-filter" data-filter="completed" style="background: transparent; color: var(--text-muted); border: none; padding: 0.3rem 0.85rem; font-size: 0.78rem; font-weight: 600; border-radius: var(--radius-sm); cursor: pointer;">Completed</button>
+          <button class="btn btn-filter" data-filter="cancelled" style="background: transparent; color: var(--text-muted); border: none; padding: 0.3rem 0.85rem; font-size: 0.78rem; font-weight: 600; border-radius: var(--radius-sm); cursor: pointer;">Cancelled</button>
+        </div>
+
+        <div style="position: relative; width: 280px;">
+          <span style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-dim); font-size: 0.8rem;">🔍</span>
+          <input 
+            type="text" 
+            id="mission-search-input" 
+            placeholder="Search missions by goal or contact..." 
+            style="width: 100%; padding-left: 2rem; background: var(--bg-surface); border: 1px solid var(--border-subtle); color: var(--text-main); border-radius: var(--radius-sm); font-size: 0.82rem; height: 32px;"
+          />
+        </div>
+      </div>
+
+      <!-- Missions Container List -->
+      <div id="missions-list-container">
+        <div style="color: var(--text-dim); font-size: 0.85rem; padding: 3rem 1rem; text-align: center;">Loading agent missions...</div>
+      </div>
+    </div>
+
+    <!-- VIEW 2: AUTOPILOT CONTACTS -->
+    <div id="view-contacts" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+        <div style="position: relative; flex: 1; max-width: 400px;">
+          <span style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-dim); font-size: 0.8rem;">🔍</span>
+          <input 
+            type="text" 
+            id="contact-search-input" 
+            placeholder="Search contacts to toggle autopilot..." 
+            style="width: 100%; padding-left: 2rem; background: var(--bg-surface); border: 1px solid var(--border-subtle); color: var(--text-main); border-radius: var(--radius-sm); font-size: 0.82rem; height: 32px;"
+          />
+        </div>
+
+        <div style="display: flex; gap: 0.5rem;">
+          <button id="btn-filter-auto-only" class="btn" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); color: var(--text-muted); font-size: 0.78rem; padding: 0.35rem 0.75rem; cursor: pointer; border-radius: var(--radius-sm);">
+            🤖 Show Enabled Only
+          </button>
+        </div>
+      </div>
+
+      <!-- Contacts Autopilot Table -->
+      <div class="data-table-wrapper" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);">
+        <table class="data-table" style="width: 100%;">
+          <thead>
+            <tr>
+              <th style="width: 35%;">Contact</th>
+              <th style="width: 15%;">Tier</th>
+              <th style="width: 25%;">Active Missions</th>
+              <th style="width: 25%; text-align: right;">Autopilot Status</th>
+            </tr>
+          </thead>
+          <tbody id="contacts-table-body">
+            <tr>
+              <td colspan="4" style="text-align: center; color: var(--text-dim); padding: 2rem;">Loading contacts directory...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- VIEW 3: TELEMETRY & PROTOCOL LOGS -->
+    <div id="view-telemetry" style="display: none;">
+      <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+            <span>📡</span> Live Protocol Telemetry
+          </span>
+          <span class="badge" style="background: rgba(0, 240, 255, 0.1); color: var(--accent-cyan); font-size: 0.72rem; padding: 0.2rem 0.5rem; border-radius: 4px;">
+            Cron Poller: 30s
+          </span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1rem;">
+          All autonomous outreach events, typing simulations, and goal completions are securely transmitted to your private Discord telemetry webhook.
+        </p>
+        <div id="telemetry-log-stream" style="font-family: var(--font-mono); font-size: 0.78rem; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 1rem; max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem;">
+          <div style="color: var(--text-dim);">Listening for agent mission telemetry events...</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Modal: + New Agent Mission -->
+  <div id="create-mission-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div style="background: var(--bg-surface); border: 1px solid var(--border-glow); border-radius: var(--radius-md); padding: 1.5rem; width: 90%; max-width: 520px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+        <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+          <span>🎯</span> Dispatch Agent Mission
+        </h3>
+        <button id="btn-close-mission-modal" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer;">✕</button>
+      </div>
+
+      <form id="form-create-mission" style="display: flex; flex-direction: column; gap: 1rem;">
+        <div>
+          <label style="display: block; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.35rem;">Target Contact</label>
+          <select id="mission-contact-select" class="form-input" style="width: 100%; background: var(--bg-tertiary); border: 1px solid var(--border-subtle); color: var(--text-main); border-radius: var(--radius-sm); padding: 0.5rem; font-size: 0.85rem;" required>
+            <option value="">Select a contact...</option>
+          </select>
+        </div>
+
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+            <label style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Mission Objective / Goal</label>
+            <span style="font-size: 0.72rem; color: var(--accent-cyan); cursor: pointer;" id="btn-suggest-example">✨ Example</span>
+          </div>
+          <textarea 
+            id="mission-goal-input" 
+            class="form-input" 
+            placeholder="e.g. Ask Alex if the pitch deck is ready for Friday and see what their timeline looks like." 
+            rows="4" 
+            style="width: 100%; background: var(--bg-tertiary); border: 1px solid var(--border-subtle); color: var(--text-main); border-radius: var(--radius-sm); padding: 0.5rem; font-size: 0.85rem; font-family: var(--font-sans); resize: vertical;" 
+            required
+          ></textarea>
+        </div>
+
+        <div>
+          <label style="display: block; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.35rem;">Proactive Outreach Schedule</label>
+          <select id="mission-schedule-select" class="form-input" style="width: 100%; background: var(--bg-tertiary); border: 1px solid var(--border-subtle); color: var(--text-main); border-radius: var(--radius-sm); padding: 0.5rem; font-size: 0.85rem;">
+            <option value="0">Immediate (Dispatch on next 30s cycle)</option>
+            <option value="15">In 15 minutes</option>
+            <option value="30">In 30 minutes</option>
+            <option value="60">In 1 hour</option>
+            <option value="120">In 2 hours</option>
+            <option value="1440">Tomorrow (In 24 hours)</option>
+          </select>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem;">
+          <button type="button" id="btn-cancel-mission" class="btn" style="background: transparent; border: 1px solid var(--border-subtle); color: var(--text-muted); padding: 0.45rem 1rem; border-radius: var(--radius-sm); cursor: pointer;">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" style="background: var(--accent-cyan); color: #000; font-weight: 600; border: none; padding: 0.45rem 1.25rem; border-radius: var(--radius-sm); cursor: pointer;">
+            🚀 Launch Mission
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="/js/nav.js"></script>
+  <script type="module" src="/js/pages/agent.js"></script>
+</body>
+</html>
