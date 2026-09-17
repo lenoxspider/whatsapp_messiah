@@ -5,6 +5,7 @@ let contactsList = [];
 let revokedIntel = { totalRevoked: 0, topDeleters: [], messages: [] };
 let selectedCard = null;
 let currentSubTab = 'tiers'; // 'tiers' | 'revoked'
+let revokedActiveFilter = 'all'; // 'all' | 'media' | 'view_once'
 
 export function initContactsPage() {
   const tabBtnTiers = document.getElementById('tab-btn-tiers');
@@ -31,6 +32,16 @@ export function initContactsPage() {
     if (viewTierBoard) viewTierBoard.style.display = 'none';
     if (viewRevokedInbox) viewRevokedInbox.style.display = 'block';
     loadRevokedIntel();
+  });
+
+  // Filter Chips in Revoked Inbox
+  document.querySelectorAll('#revoked-filter-chips .btn-filter-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#revoked-filter-chips .btn-filter-chip').forEach(b => b.classList.remove('active-filter'));
+      btn.classList.add('active-filter');
+      revokedActiveFilter = btn.getAttribute('data-filter') || 'all';
+      renderRevokedList(revokedIntel.messages || []);
+    });
   });
 
   // Keyboard Reclassification: 1-5
@@ -273,23 +284,32 @@ function renderRevokedList(messages) {
   const container = document.getElementById('revoked-list-container');
   if (!container) return;
 
-  if (messages.length === 0) {
+  let list = messages;
+  if (revokedActiveFilter === 'media') {
+    list = messages.filter(m => Boolean(m.media_file));
+  } else if (revokedActiveFilter === 'view_once') {
+    list = messages.filter(m => Boolean(m.is_view_once));
+  }
+
+  if (list.length === 0) {
     container.innerHTML = `
       <div style="padding: 3rem 1.5rem; text-align: center;">
         <div style="font-size: 2rem; margin-bottom: 0.5rem;">🛡️</div>
-        <div style="font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">Nothing Captured Yet</div>
+        <div style="font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">Nothing Captured in this View</div>
         <div style="font-size: 0.82rem; color: var(--text-muted);">
-          When anyone deletes a WhatsApp message ("This message was deleted"), Messiah captures and displays it here immediately.
+          ${revokedActiveFilter === 'all' 
+            ? 'When anyone deletes a WhatsApp message or sends a View-Once, Messiah captures and displays it here immediately.'
+            : 'No items match the active filter.'}
         </div>
       </div>
     `;
     return;
   }
 
-  container.innerHTML = messages.map((m, idx) => {
+  container.innerHTML = list.map((m, idx) => {
     const time = new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const sender = m.contact_name || `+${m.sender_jid.split('@')[0]}`;
-    const preview = (m.content || '[Media Deleted]').slice(0, 70);
+    const preview = (m.content || (m.media_file ? `[Preserved Media File: ${m.media_file}]` : '[Payload Deleted]')).slice(0, 70);
 
     return `
       <div class="tier-card ${idx === 0 ? 'selected' : ''}" data-idx="${idx}" style="cursor: pointer;">
@@ -305,6 +325,12 @@ function renderRevokedList(messages) {
         <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.3;">
           ${escapeHtml(preview)}
         </div>
+        <div style="display: flex; gap: 0.35rem; margin-top: 0.35rem; flex-wrap: wrap;">
+          ${m.is_view_once ? '<span class="delta-badge" style="color: var(--accent-purple); border: 1px solid var(--accent-purple); font-size: 0.68rem;">👁️ VIEW-ONCE</span>' : ''}
+          ${m.media_file && m.media_mimetype?.startsWith('image/') ? '<span class="delta-badge" style="color: var(--accent-green); font-size: 0.68rem;">📷 PHOTO</span>' : ''}
+          ${m.media_file && m.media_mimetype?.startsWith('audio/') ? '<span class="delta-badge" style="color: var(--accent-amber); font-size: 0.68rem;">🎙️ AUDIO</span>' : ''}
+          ${m.media_file && m.media_mimetype?.startsWith('video/') ? '<span class="delta-badge" style="color: #60a5fa; font-size: 0.68rem;">📹 VIDEO</span>' : ''}
+        </div>
       </div>
     `;
   }).join('');
@@ -314,12 +340,12 @@ function renderRevokedList(messages) {
       const idx = Number(el.getAttribute('data-idx'));
       container.querySelectorAll('.tier-card').forEach(c => c.classList.remove('selected'));
       el.classList.add('selected');
-      inspectRevoked(messages[idx]);
+      inspectRevoked(list[idx]);
     });
   });
 
-  if (messages.length > 0) {
-    inspectRevoked(messages[0]);
+  if (list.length > 0) {
+    inspectRevoked(list[0]);
   }
 }
 
@@ -335,6 +361,45 @@ function inspectRevoked(m) {
     deltaTag.textContent = `Captured: ${dateStr}`;
   }
 
+  let mediaHtml = '';
+  if (m.media_file) {
+    const mediaUrl = `/api/media/${encodeURIComponent(m.media_file)}`;
+    if (m.media_mimetype?.startsWith('image/')) {
+      mediaHtml = `
+        <div style="margin: 0.85rem 0; background: #000; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); overflow: hidden; text-align: center;">
+          <a href="${mediaUrl}" target="_blank" title="Click to view full resolution">
+            <img src="${mediaUrl}" style="max-width: 100%; max-height: 380px; object-fit: contain; display: block; margin: 0 auto;" />
+          </a>
+        </div>
+      `;
+    } else if (m.media_mimetype?.startsWith('audio/')) {
+      mediaHtml = `
+        <div style="margin: 0.85rem 0; background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 0.85rem;">
+          <div style="font-size: 0.75rem; color: var(--accent-amber); font-family: var(--font-mono); margin-bottom: 0.5rem; font-weight: 600;">🎙️ Preserved Voice Note / Audio:</div>
+          <audio controls style="width: 100%; height: 36px;" src="${mediaUrl}"></audio>
+        </div>
+      `;
+    } else if (m.media_mimetype?.startsWith('video/')) {
+      mediaHtml = `
+        <div style="margin: 0.85rem 0; background: #000; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); overflow: hidden;">
+          <video controls style="width: 100%; max-height: 360px;" src="${mediaUrl}"></video>
+        </div>
+      `;
+    } else {
+      mediaHtml = `
+        <div style="margin: 0.85rem 0;">
+          <a href="${mediaUrl}" download class="btn" style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 0.5rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.8rem; display: inline-flex; align-items: center; gap: 0.4rem;">
+            📎 Download Preserved Attachment (${escapeHtml(m.media_file)})
+          </a>
+        </div>
+      `;
+    }
+  }
+
+  const statusBanner = m.is_view_once
+    ? `<div style="font-size: 0.75rem; color: var(--accent-purple); font-family: var(--font-mono); font-weight: 600;">👁️ Ephemeral View-Once Captured &amp; Decrypted by Messiah</div>`
+    : `<div style="font-size: 0.75rem; color: var(--accent-coral); font-family: var(--font-mono); font-weight: 600;">⚠️ Deleted for Everyone by sender · Preserved by Messiah Anti-Revoke</div>`;
+
   container.innerHTML = `
     <div style="margin-bottom: 1rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
       <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; font-family: var(--font-mono);">
@@ -343,23 +408,24 @@ function inspectRevoked(m) {
       <div style="font-size: 1rem; font-weight: 600; color: var(--text-main); margin: 0.25rem 0;">
         ${escapeHtml(sender)}
       </div>
-      <div style="font-size: 0.75rem; color: var(--accent-coral); font-family: var(--font-mono);">
-        ⚠️ Deleted for Everyone by sender · Preserved by Messiah Anti-Revoke
-      </div>
+      ${statusBanner}
     </div>
 
+    ${mediaHtml}
+
     <div style="font-size: 0.78rem; color: var(--text-dim); text-transform: uppercase; font-family: var(--font-mono); margin-bottom: 0.4rem;">
-      Recovered Text Payload:
+      Recovered Payload / Caption:
     </div>
 
     <div class="revoked-evidence-quote">
-${escapeHtml(m.content || '[No Text Extracted]')}
+${escapeHtml(m.content || (m.media_file ? '[Preserved Media Binary]' : '[No Text Content]'))}
     </div>
 
     <div style="margin-top: 1.5rem; background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 0.75rem; font-family: var(--font-mono); font-size: 0.76rem; display: flex; flex-direction: column; gap: 0.4rem;">
       <div><span style="color: var(--text-dim);">Message ID:</span> <span class="tabular-nums" style="color: var(--text-muted);">${escapeHtml(m.id)}</span></div>
       <div><span style="color: var(--text-dim);">Chat JID:</span> <span class="tabular-nums" style="color: var(--text-muted);">${escapeHtml(m.chat_jid)}</span></div>
       <div><span style="color: var(--text-dim);">Contact Tier:</span> <span style="color: var(--tier-${m.contact_tier || 4}); font-weight: 600;">Tier ${m.contact_tier || 4}</span></div>
+      ${m.media_file ? `<div><span style="color: var(--text-dim);">Preserved File:</span> <span style="color: var(--accent-green);">${escapeHtml(m.media_file)} (${escapeHtml(m.media_mimetype || 'binary')})</span></div>` : ''}
     </div>
   `;
 }

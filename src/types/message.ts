@@ -9,6 +9,17 @@ export interface StoredMessage {
   timestamp: number;
   is_revoked: number; // 0 or 1
   revoked_at: number | null;
+  media_path?: string | null;
+  media_mimetype?: string | null;
+  is_view_once?: number;
+}
+
+export interface CallRecord {
+  id: string;
+  caller_jid: string;
+  is_video: number;
+  timestamp: number;
+  action_taken: string;
 }
 
 export interface IncomingMessageContext {
@@ -22,4 +33,7 @@ export interface IncomingMessageContext {
   text: string;
   timestamp: number;
   raw: any;
+  mediaPath?: string | null;
+  mediaMimeType?: string | null;
+  isViewOnce?: boolean;
 }

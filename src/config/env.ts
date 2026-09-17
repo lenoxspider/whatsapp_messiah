@@ -17,6 +17,8 @@ export interface AppConfig {
   dashboardPassword: string;
   typingSpeedMs: number;
   maxTypingDelayMs: number;
+  autoRejectCalls: boolean;
+  forwardMediaToDiscord: boolean;
 }
 
 function parseEnv(): AppConfig {
@@ -33,6 +35,8 @@ function parseEnv(): AppConfig {
   const dashboardPassword = process.env.DASHBOARD_PASSWORD || '';
   const typingSpeedMs = Number(process.env.TYPING_SPEED_MS) || 45;
   const maxTypingDelayMs = Number(process.env.MAX_TYPING_DELAY_MS) || 8000;
+  const autoRejectCalls = process.env.AUTO_REJECT_CALLS !== '0' && process.env.AUTO_REJECT_CALLS !== 'false';
+  const forwardMediaToDiscord = process.env.FORWARD_MEDIA_TO_DISCORD !== '0' && process.env.FORWARD_MEDIA_TO_DISCORD !== 'false';
 
   return {
     pairingMethod,
@@ -47,7 +51,9 @@ function parseEnv(): AppConfig {
     autonomousGhost,
     dashboardPassword,
     typingSpeedMs,
-    maxTypingDelayMs
+    maxTypingDelayMs,
+    autoRejectCalls,
+    forwardMediaToDiscord
   };
 }
 

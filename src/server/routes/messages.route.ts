@@ -64,21 +64,48 @@ messagesRouter.get('/revoked-intel', (req, res) => {
         m.from_me, 
         m.content, 
         m.timestamp, 
+        m.media_path,
+        m.media_mimetype,
+        m.is_view_once,
         c.name as contact_name,
         c.tier as contact_tier
       FROM messages m
       LEFT JOIN contacts c ON m.sender_jid = c.jid
-      WHERE m.is_revoked = 1
+      WHERE m.is_revoked = 1 OR m.is_view_once = 1
       ORDER BY m.timestamp DESC
       LIMIT 100
     `).all();
 
+    // Map media_path to web-accessible filename
+    const sanitized = revokedMessages.map((row: any) => ({
+      ...row,
+      media_file: row.media_path ? row.media_path.split(/[\\/]/).pop() : null
+    }));
+
     res.json({
       totalRevoked: totalRow?.total || 0,
       topDeleters,
-      messages: revokedMessages
+      messages: sanitized
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
+
+messagesRouter.get('/calls', (req, res) => {
+  const db = getDatabase();
+  try {
+    const calls = db.prepare(`
+      SELECT c.*, ct.name as caller_name, ct.tier as caller_tier
+      FROM calls c
+      LEFT JOIN contacts ct ON c.caller_jid = ct.jid
+      ORDER BY c.timestamp DESC
+      LIMIT 50
+    `).all();
+
+    res.json({ calls });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+

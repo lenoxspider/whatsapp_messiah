@@ -138,9 +138,39 @@
               </div>
             </div>
 
+            <!-- Stealth Call Rejecter -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 0.85rem;">
+              <div>
+                <div style="font-weight: 600; font-size: 0.84rem; color: var(--accent-coral);">Stealth Call Rejecter</div>
+                <div style="font-size: 0.76rem; color: var(--text-muted);">Silently auto-rejects voice &amp; video calls; dispatches Discord alert</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.6rem;">
+                <span id="badge-call-rejecter" class="delta-badge" style="font-size: 0.7rem; min-width: 32px; text-align: center;">ON</span>
+                <label class="ops-switch" title="Toggle Stealth Call Rejecter">
+                  <input type="checkbox" id="call-rejecter-toggle" checked />
+                  <span class="ops-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Discord Media Telemetry -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 0.85rem;">
+              <div>
+                <div style="font-weight: 600; font-size: 0.84rem; color: var(--accent-purple);">Forward Media to Discord</div>
+                <div style="font-size: 0.76rem; color: var(--text-muted);">Uploads decrypted View-Once &amp; deleted photos/audio directly as attachments</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.6rem;">
+                <span id="badge-discord-media" class="delta-badge" style="font-size: 0.7rem; min-width: 32px; text-align: center;">ON</span>
+                <label class="ops-switch" title="Toggle Discord Media Forwarding">
+                  <input type="checkbox" id="discord-media-toggle" checked />
+                  <span class="ops-slider"></span>
+                </label>
+              </div>
+            </div>
+
             <!-- Anti-Revoke Retention Readout -->
             <div style="border-top: 1px solid var(--border-subtle); padding-top: 0.85rem; font-size: 0.78rem; color: var(--text-dim); display: flex; justify-content: space-between;">
-              <span>Preserved Retractions:</span>
+              <span>Preserved Retractions &amp; View-Once:</span>
               <span id="anti-revoke-stat" class="tabular-nums" style="color: var(--accent-coral); font-weight: 600;">--</span>
             </div>
           </div>

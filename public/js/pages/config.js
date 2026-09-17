@@ -19,6 +19,8 @@ export function initConfigPage() {
 
   const autonomousToggle = document.getElementById('autonomous-ghost-toggle');
   const ghostToggle = document.getElementById('ghost-handler-toggle');
+  const callRejecterToggle = document.getElementById('call-rejecter-toggle');
+  const discordMediaToggle = document.getElementById('discord-media-toggle');
   const typingSpeedInput = document.getElementById('typing-speed-input');
   const maxDelayInput = document.getElementById('max-delay-input');
   const antiRevokeStat = document.getElementById('anti-revoke-stat');
@@ -90,6 +92,14 @@ export function initConfigPage() {
     updateSwitchBadge(ghostToggle, 'badge-ghost-handler');
   });
 
+  callRejecterToggle?.addEventListener('change', () => {
+    updateSwitchBadge(callRejecterToggle, 'badge-call-rejecter');
+  });
+
+  discordMediaToggle?.addEventListener('change', () => {
+    updateSwitchBadge(discordMediaToggle, 'badge-discord-media');
+  });
+
   // Load Current Configuration
   async function loadConfig() {
     try {
@@ -121,6 +131,14 @@ export function initConfigPage() {
       if (ghostToggle) {
         ghostToggle.checked = Boolean(cfg.ghostHandlerEnabled);
         updateSwitchBadge(ghostToggle, 'badge-ghost-handler');
+      }
+      if (callRejecterToggle) {
+        callRejecterToggle.checked = Boolean(cfg.autoRejectCalls !== false);
+        updateSwitchBadge(callRejecterToggle, 'badge-call-rejecter');
+      }
+      if (discordMediaToggle) {
+        discordMediaToggle.checked = Boolean(cfg.forwardMediaToDiscord !== false);
+        updateSwitchBadge(discordMediaToggle, 'badge-discord-media');
       }
       if (typingSpeedInput && cfg.typingSpeedMs) typingSpeedInput.value = cfg.typingSpeedMs;
       if (maxDelayInput && cfg.maxTypingDelayMs) maxDelayInput.value = cfg.maxTypingDelayMs;
@@ -189,11 +207,11 @@ Style Guidelines:
         body: { url }
       });
       discordTestResult.style.color = 'var(--accent-green)';
-      discordTestResult.textContent = '✓ Notification successfully posted to Discord!';
-      showToast('Discord dispatch verified!', 'success');
+      discordTestResult.textContent = '✓ Notification received by Discord!';
+      showToast('Discord notification dispatched successfully!', 'success');
     } catch (err) {
       discordTestResult.style.color = 'var(--accent-coral)';
-      discordTestResult.textContent = `✗ Dispatch Failed: ${err.message}`;
+      discordTestResult.textContent = `✗ Webhook Failed: ${err.message}`;
       showToast(err.message, 'error');
     } finally {
       btnTestDiscord.disabled = false;
@@ -201,7 +219,7 @@ Style Guidelines:
     }
   });
 
-  // Live Persona Simulation Test
+  // Generate Persona Preview
   btnGeneratePreview?.addEventListener('click', async () => {
     const prompt = personaEditor?.value.trim();
     const messageText = simMessageInput?.value.trim();
@@ -248,6 +266,8 @@ Style Guidelines:
       discordWebhookUrl: discordWebhookInput?.value.trim() || undefined,
       autonomousGhost: autonomousToggle ? autonomousToggle.checked : false,
       ghostHandlerEnabled: ghostToggle ? ghostToggle.checked : true,
+      autoRejectCalls: callRejecterToggle ? callRejecterToggle.checked : true,
+      forwardMediaToDiscord: discordMediaToggle ? discordMediaToggle.checked : true,
       typingSpeedMs: Number(typingSpeedInput?.value || 45),
       maxTypingDelayMs: Number(maxDelayInput?.value || 8000)
     };

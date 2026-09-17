@@ -70,5 +70,30 @@ export function initializeDatabaseSchema(): void {
     );
 
     CREATE INDEX IF NOT EXISTS idx_reminders_trigger_status ON reminders(trigger_at, status);
+
+    CREATE TABLE IF NOT EXISTS calls (
+      id TEXT PRIMARY KEY,
+      caller_jid TEXT NOT NULL,
+      is_video INTEGER NOT NULL DEFAULT 0,
+      timestamp INTEGER NOT NULL,
+      action_taken TEXT NOT NULL DEFAULT 'rejected'
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_calls_timestamp ON calls(timestamp);
   `);
+
+  // Safe migration for existing SQLite database
+  const columns = db.prepare(`PRAGMA table_info(messages)`).all() as Array<{ name: string }>;
+  const columnNames = new Set(columns.map(c => c.name));
+
+  if (!columnNames.has('media_path')) {
+    db.exec(`ALTER TABLE messages ADD COLUMN media_path TEXT;`);
+  }
+  if (!columnNames.has('media_mimetype')) {
+    db.exec(`ALTER TABLE messages ADD COLUMN media_mimetype TEXT;`);
+  }
+  if (!columnNames.has('is_view_once')) {
+    db.exec(`ALTER TABLE messages ADD COLUMN is_view_once INTEGER NOT NULL DEFAULT 0;`);
+  }
 }
+

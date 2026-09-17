@@ -18,6 +18,8 @@ configRouter.get('/', (req, res) => {
     discordWebhookMasked: env.discordWebhookUrl ? `${env.discordWebhookUrl.slice(0, 35)}...` : '',
     ghostHandlerEnabled: env.ghostHandlerEnabled,
     autonomousGhost: env.autonomousGhost,
+    autoRejectCalls: env.autoRejectCalls,
+    forwardMediaToDiscord: env.forwardMediaToDiscord,
     typingSpeedMs: env.typingSpeedMs,
     maxTypingDelayMs: env.maxTypingDelayMs
   });
@@ -32,6 +34,8 @@ configRouter.post('/', (req, res) => {
     ownerJid,
     ghostHandlerEnabled,
     autonomousGhost,
+    autoRejectCalls,
+    forwardMediaToDiscord,
     typingSpeedMs,
     maxTypingDelayMs
   } = req.body;
@@ -43,6 +47,8 @@ configRouter.post('/', (req, res) => {
   if (ownerJid !== undefined) env.ownerJid = ownerJid;
   if (ghostHandlerEnabled !== undefined) env.ghostHandlerEnabled = Boolean(ghostHandlerEnabled);
   if (autonomousGhost !== undefined) env.autonomousGhost = Boolean(autonomousGhost);
+  if (autoRejectCalls !== undefined) env.autoRejectCalls = Boolean(autoRejectCalls);
+  if (forwardMediaToDiscord !== undefined) env.forwardMediaToDiscord = Boolean(forwardMediaToDiscord);
   if (typingSpeedMs !== undefined) env.typingSpeedMs = Number(typingSpeedMs);
   if (maxTypingDelayMs !== undefined) env.maxTypingDelayMs = Number(maxTypingDelayMs);
 
@@ -70,6 +76,8 @@ configRouter.post('/', (req, res) => {
     if (env.ownerJid) setEnvVar('OWNER_JID', env.ownerJid);
     setEnvVar('GHOST_HANDLER_ENABLED', env.ghostHandlerEnabled ? '1' : '0');
     setEnvVar('AUTONOMOUS_GHOST', env.autonomousGhost ? '1' : '0');
+    setEnvVar('AUTO_REJECT_CALLS', env.autoRejectCalls ? '1' : '0');
+    setEnvVar('FORWARD_MEDIA_TO_DISCORD', env.forwardMediaToDiscord ? '1' : '0');
     setEnvVar('TYPING_SPEED_MS', String(env.typingSpeedMs));
     setEnvVar('MAX_TYPING_DELAY_MS', String(env.maxTypingDelayMs));
 

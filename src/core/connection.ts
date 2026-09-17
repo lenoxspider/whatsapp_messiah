@@ -10,6 +10,9 @@ import { evaluateDisconnect } from './reconnect.js';
 import { dashboardState } from '../server/state.js';
 import { systemLogger } from '../server/logger.js';
 import { env } from '../config/env.js';
+import { messageRepo } from '../db/repositories/message.repo.js';
+import { contactRepo } from '../db/repositories/contact.repo.js';
+import { discordService } from '../services/discord.service.js';
 
 export interface ConnectionCallbacks {
   onMessageUpsert: (sock: WASocket, upsert: any) => Promise<void>;
@@ -113,6 +116,45 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
       await callbacks.onMessageUpsert(sock, upsert);
     } catch (err) {
       console.error('[Connection] Error handling messages.upsert:', err);
+    }
+  });
+
+  // Stealth Call Rejection & Telemetry loop
+  sock.ev.on('call', async (calls) => {
+    for (const call of calls) {
+      if (call.status === 'offer') {
+        const callerPhone = call.from.split('@')[0];
+        const isVideo = Boolean(call.isVideo);
+        const timestamp = Number(call.date) * 1000 || Date.now();
+
+        console.log(`[Call Inbound] Incoming ${isVideo ? 'video' : 'voice'} call from +${callerPhone}`);
+
+        if (env.autoRejectCalls) {
+          try {
+            await sock.rejectCall(call.id, call.from);
+            console.log(`[Call Rejecter] Silently declined call ${call.id} from +${callerPhone}`);
+          } catch (err: any) {
+            console.warn(`[Call Rejecter] Failed to decline call: ${err.message}`);
+          }
+
+          messageRepo.saveCall({
+            id: call.id,
+            callerJid: call.from,
+            isVideo,
+            timestamp,
+            actionTaken: 'rejected'
+          });
+
+          const contact = contactRepo.getContact(call.from);
+          await discordService.sendCallAlert({
+            callerPhone,
+            callerName: contact?.name || null,
+            isVideo,
+            timestamp,
+            actionTaken: 'rejected'
+          });
+        }
+      }
     }
   });
 

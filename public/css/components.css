@@ -438,6 +438,30 @@
   color: var(--text-muted);
 }
 
+.btn-filter-chip {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: var(--font-mono);
+}
+
+.btn-filter-chip:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.btn-filter-chip.active-filter {
+  background: var(--bg-hover);
+  border-color: var(--border-focus);
+  color: var(--accent-green);
+  font-weight: 600;
+}
+
 /* ------------------------------------------------------------------------------
    Hardware Operations Toggle Switch
    ------------------------------------------------------------------------------ */

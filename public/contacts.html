@@ -147,9 +147,16 @@
       <div class="two-pane-container">
         <!-- Left: Deletion List -->
         <div class="pane-surface">
-          <div class="pane-header">
-            <span class="pane-title">Recovered Transmissions</span>
-            <span style="font-size: 0.72rem; color: var(--accent-coral); font-family: var(--font-mono); font-weight: 600;">ANTI-REVOKE ACTIVE</span>
+          <div class="pane-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.85rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span class="pane-title" style="font-size: 0.8rem;">Captured Feeds</span>
+              <div style="display: flex; gap: 0.25rem;" id="revoked-filter-chips">
+                <button type="button" class="btn-filter-chip active-filter" data-filter="all">All</button>
+                <button type="button" class="btn-filter-chip" data-filter="media">📸 Media</button>
+                <button type="button" class="btn-filter-chip" data-filter="view_once">👁️ View-Once</button>
+              </div>
+            </div>
+            <span style="font-size: 0.72rem; color: var(--accent-coral); font-family: var(--font-mono); font-weight: 600;">ACTIVE</span>
           </div>
           <div class="pane-scrollable" id="revoked-list-container">
             <div style="color: var(--text-dim); padding: 2rem; text-align: center; font-size: 0.82rem;">Loading intercepted messages...</div>

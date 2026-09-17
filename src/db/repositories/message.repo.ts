@@ -13,11 +13,14 @@ export class MessageRepository {
     content: string | null;
     rawPayload: any;
     timestamp: number;
+    mediaPath?: string | null;
+    mediaMimetype?: string | null;
+    isViewOnce?: boolean;
   }): void {
     const stmt = this.db.prepare(`
       INSERT OR IGNORE INTO messages (
-        id, chat_jid, sender_jid, from_me, message_type, content, raw_payload_json, timestamp, is_revoked
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+        id, chat_jid, sender_jid, from_me, message_type, content, raw_payload_json, timestamp, is_revoked, media_path, media_mimetype, is_view_once
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
     `);
 
     stmt.run(
@@ -28,14 +31,23 @@ export class MessageRepository {
       msg.messageType,
       msg.content,
       JSON.stringify(msg.rawPayload),
-      msg.timestamp
+      msg.timestamp,
+      msg.mediaPath || null,
+      msg.mediaMimetype || null,
+      msg.isViewOnce ? 1 : 0
     );
   }
 
-  markAsRevoked(id: string, revokedAt: number = Date.now()): StoredMessage | null {
-    const existing = this.getMessageById(id);
-    if (!existing) return null;
+  updateMedia(id: string, mediaPath: string, mediaMimetype: string, isViewOnce: boolean = false): void {
+    const stmt = this.db.prepare(`
+      UPDATE messages
+      SET media_path = ?, media_mimetype = ?, is_view_once = ?
+      WHERE id = ?
+    `);
+    stmt.run(mediaPath, mediaMimetype, isViewOnce ? 1 : 0, id);
+  }
 
+  markAsRevoked(id: string, revokedAt: number = Date.now()): StoredMessage | null {
     const stmt = this.db.prepare(`
       UPDATE messages
       SET is_revoked = 1, revoked_at = ?
@@ -43,11 +55,7 @@ export class MessageRepository {
     `);
     stmt.run(revokedAt, id);
 
-    return {
-      ...existing,
-      is_revoked: 1,
-      revoked_at: revokedAt
-    };
+    return this.getMessageById(id);
   }
 
   getMessageById(id: string): StoredMessage | null {
@@ -65,6 +73,37 @@ export class MessageRepository {
     `);
     const rows = stmt.all(chatJid, limit) as unknown as StoredMessage[];
     return rows.reverse();
+  }
+
+  saveCall(call: {
+    id: string;
+    callerJid: string;
+    isVideo: boolean;
+    timestamp: number;
+    actionTaken?: string;
+  }): void {
+    const stmt = this.db.prepare(`
+      INSERT OR REPLACE INTO calls (id, caller_jid, is_video, timestamp, action_taken)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    stmt.run(
+      call.id,
+      call.callerJid,
+      call.isVideo ? 1 : 0,
+      call.timestamp,
+      call.actionTaken || 'rejected'
+    );
+  }
+
+  getRecentCalls(limit: number = 50): any[] {
+    const stmt = this.db.prepare(`
+      SELECT c.*, ct.name as caller_name, ct.tier as caller_tier
+      FROM calls c
+      LEFT JOIN contacts ct ON c.caller_jid = ct.jid
+      ORDER BY c.timestamp DESC
+      LIMIT ?
+    `);
+    return stmt.all(limit);
   }
 }
 

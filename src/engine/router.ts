@@ -1,6 +1,9 @@
 import type { WASocket } from '@whiskeysockets/baileys';
 import { messageRepo } from '../db/repositories/message.repo.js';
+import { contactRepo } from '../db/repositories/contact.repo.js';
 import { antiRevokeHandler } from './messiah/anti_revoke.js';
+import { mediaExtractor } from './messiah/media.js';
+import { discordService } from '../services/discord.service.js';
 import { secondBrainDispatcher } from './second_brain/dispatcher.js';
 import { messiahHandler } from './messiah/handler.js';
 import type { IncomingMessageContext } from '../types/message.js';
@@ -70,20 +73,51 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
 
     console.log(`[Message Inbound] chat=${chatJid} fromMe=${fromMe} text="${text}"`);
 
-    // 1. SILENT ARCHIVE: Persist message immediately to SQLite
+    // 1. SILENT ARCHIVE & MEDIA EXTRACTION
+    // Check if message is a View-Once or standard media message
+    let mediaResult = null;
+    const isViewOnce = mediaExtractor.isViewOnceMessage(msg);
+
+    // Save initial record to SQLite
+    const msgId = msg.key.id || `${Date.now()}`;
     messageRepo.saveMessage({
-      id: msg.key.id || `${Date.now()}`,
+      id: msgId,
       chatJid,
       senderJid,
       fromMe,
       messageType,
       content: text,
       rawPayload: msg,
-      timestamp: Number(msg.messageTimestamp) * 1000 || Date.now()
+      timestamp: Number(msg.messageTimestamp) * 1000 || Date.now(),
+      isViewOnce
+    });
+
+    // Asynchronously extract and decrypt media (so text routing remains instant)
+    mediaExtractor.extractAndSaveMedia(msg).then(async (extracted) => {
+      if (!extracted) return;
+
+      messageRepo.updateMedia(msgId, extracted.filePath, extracted.mimeType, extracted.isViewOnce);
+
+      // If View-Once is intercepted and from someone else, immediately alert via Discord
+      if (extracted.isViewOnce && !fromMe && env.forwardMediaToDiscord) {
+        console.log(`[Anti-ViewOnce] Ephemeral message from ${senderPhone} decrypted and preserved.`);
+        const contact = contactRepo.getContact(senderJid);
+        await discordService.sendViewOnceAlert({
+          senderPhone,
+          senderName: contact?.name || null,
+          caption: extracted.caption || text || undefined,
+          timestamp: Number(msg.messageTimestamp) * 1000 || Date.now(),
+          buffer: extracted.buffer,
+          fileName: extracted.fileName,
+          mimeType: extracted.mimeType
+        });
+      }
+    }).catch(err => {
+      console.warn(`[Media Extraction Error] ${msgId}: ${err.message}`);
     });
 
     const ctx: IncomingMessageContext = {
-      id: msg.key.id || '',
+      id: msgId,
       chatJid,
       senderJid,
       senderPhone,
@@ -92,7 +126,8 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
       messageType,
       text,
       timestamp: Number(msg.messageTimestamp) * 1000 || Date.now(),
-      raw: msg
+      raw: msg,
+      isViewOnce
     };
 
     // 2. SELF-CHAT / SECOND BRAIN ROUTING:
