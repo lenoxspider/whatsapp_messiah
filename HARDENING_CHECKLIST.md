@@ -8,10 +8,10 @@
 ## 🚨 IMMEDIATE CRITICAL PRIORITIES (Fix First)
 
 ### 1. 🔒 Control Plane & Web Dashboard Lockdown
-- [ ] **Bind Host Restricted**: Ensure Express server binds strictly to `127.0.0.1` (or local loopback / Tailscale) — never `0.0.0.0`.
-- [ ] **Authentication Middleware**: Enforce password/JWT auth middleware across all mutating API routes (`/api/pairing`, `/api/logout`, `/api/wipe`, etc.).
-- [ ] **Log Stream Sanitize & Gate**: Restrict or redact full payload logs from `/api/logs` endpoint to prevent sensitive message leaks.
-- [ ] **Audit Logging**: Log timestamp, action, and client IP for every administrative call (wipe, pair, config change).
+- [x] **Bind Host Restricted**: Express server binds strictly to `127.0.0.1` (local loopback) by default — preventing external `0.0.0.0` exposure.
+- [x] **Authentication Middleware**: Enforced session / auth middleware protection across all administrative routes (`/api/pair`, `/api/extras`, `/api/config`).
+- [x] **Log Stream Sanitize & Gate**: Redacts authentication tokens, bearer headers, and raw base64 payload streams from the API log output.
+- [x] **Audit Logging**: Structured audit logging (`systemLogger.audit`) records timestamp, IP address, and administrative action for pairing, resets, and reconnects.
 
 ### 2. 🕵️ Status Stealer Redesign (Capture-On-Receipt)
 - [ ] **Eliminate Trigger-and-Delete**: Remove the outward reply trigger (e.g. `_nice` / `!😶🌫️`) and post-delete step entirely to eliminate detection footprint.

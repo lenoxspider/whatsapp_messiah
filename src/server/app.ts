@@ -53,11 +53,11 @@ export function createDashboardServer(): express.Express {
   return app;
 }
 
-export function startDashboardServer(port: number = 3000): Promise<number> {
+export function startDashboardServer(port: number = 3000, host: string = '127.0.0.1'): Promise<number> {
   return new Promise((resolve) => {
     const app = createDashboardServer();
-    const server = app.listen(port, '0.0.0.0', () => {
-      console.log(`🌐 [Web Dashboard] Control plane online at http://localhost:${port}`);
+    const server = app.listen(port, host, () => {
+      console.log(`🌐 [Web Dashboard] Control plane online at http://${host}:${port}`);
       resolve(port);
     });
 

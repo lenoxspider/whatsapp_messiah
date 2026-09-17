@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { dashboardState } from '../state.js';
+import { systemLogger } from '../logger.js';
 
 export const pairingRouter = Router();
 
@@ -21,6 +22,7 @@ function sanitizePhoneNumber(input: string): string {
 }
 
 pairingRouter.post('/code', async (req, res) => {
+  const clientIp = req.ip || req.socket.remoteAddress || '127.0.0.1';
   const { phone } = req.body;
   if (!phone || typeof phone !== 'string') {
     return res.status(400).json({ error: 'Valid phone number is required.' });
@@ -30,6 +32,8 @@ pairingRouter.post('/code', async (req, res) => {
   if (cleanPhone.length < 8) {
     return res.status(400).json({ error: 'Phone number is too short. Include country code.' });
   }
+
+  systemLogger.audit('PAIRING_CODE_REQUEST', clientIp, `Requested 8-digit pairing code for +${cleanPhone}`);
 
   if (!dashboardState.requestPairingCodeFn) {
     return res.status(503).json({ error: 'WhatsApp socket is not initialized. Please wait a moment.' });
@@ -66,6 +70,8 @@ pairingRouter.post('/code', async (req, res) => {
 });
 
 pairingRouter.post('/reconnect', async (req, res) => {
+  const clientIp = req.ip || req.socket.remoteAddress || '127.0.0.1';
+  systemLogger.audit('SOCKET_RECONNECT', clientIp, 'Triggered manual socket reconnection');
   if (dashboardState.reconnectFn) {
     try {
       await dashboardState.reconnectFn();
@@ -78,6 +84,8 @@ pairingRouter.post('/reconnect', async (req, res) => {
 });
 
 pairingRouter.post('/logout', async (req, res) => {
+  const clientIp = req.ip || req.socket.remoteAddress || '127.0.0.1';
+  systemLogger.audit('DEVICE_LOGOUT', clientIp, 'Triggered session logout and device unlinking');
   if (dashboardState.logoutFn) {
     try {
       await dashboardState.logoutFn();

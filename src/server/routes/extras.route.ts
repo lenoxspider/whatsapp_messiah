@@ -11,6 +11,8 @@ import { backupService } from '../../services/backup.service.js';
 import { getActiveSocket } from '../../core/connection.js';
 import { dashboardState } from '../state.js';
 
+import { systemLogger } from '../logger.js';
+
 const execAsync = promisify(exec);
 const isWin = process.platform === 'win32';
 const npmCmd = isWin ? 'npm.cmd' : 'npm';
@@ -219,6 +221,9 @@ extrasRouter.post('/restart', (req, res) => {
 
 // POST trigger full factory reset (purge vault, media, and sessions)
 extrasRouter.post('/factory-reset', async (req, res) => {
+  const clientIp = req.ip || req.socket.remoteAddress || '127.0.0.1';
+  systemLogger.audit('FACTORY_RESET', clientIp, 'Full factory reset initiated from Control Plane');
+
   try {
     console.log('[Factory Reset] Initiating complete vault & session purge...');
 
