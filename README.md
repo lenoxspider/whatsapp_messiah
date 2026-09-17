@@ -130,19 +130,43 @@ Password-gated control plane running at `http://localhost:3000` (and on your VPS
 A zero-touch bash installer is provided for headless Linux servers:
 
 ```bash
-chmod +x scripts/setup.sh scripts/update.sh
+chmod +x scripts/*.sh
 ./scripts/setup.sh
 ```
 
-**What `scripts/setup.sh` does:**
-1. Prompts for your desired Web Dashboard master password and securely sets `chmod 600 .env`.
-2. Installs Node.js 24 LTS and PM2 process manager if missing.
-3. Compiles TypeScript and starts the daemon under PM2 with automatic system reboot persistence (`pm2 startup`).
+**What `scripts/setup.sh` does automatically:**
+1. Prompts for your desired Web Dashboard master password and securely locks `.env` (`chmod 600`).
+2. Installs Node.js 24 LTS and PM2 process supervisor if missing.
+3. Installs dependencies, compiles TypeScript, and starts the daemon under PM2 with system reboot persistence (`pm2 startup`).
 
-**Zero-downtime updates:**
-```bash
-./scripts/update.sh
-```
+#### 📲 Linking WhatsApp on Your VPS
+1. View the live terminal logs to get your **8-digit pairing code**:
+   ```bash
+   pm2 logs whatsapp-messiah --lines 30
+   ```
+2. On your phone: Open **WhatsApp** ➔ **Settings** ➔ **Linked Devices** ➔ **Link with phone number instead** ➔ Enter the 8-digit code shown in the logs.
+3. Once connected, access the Web Dashboard in your browser!
+
+#### 🌐 Accessing the Web Dashboard (IPv4 & Custom Ports)
+* **Standard IPv4:** `http://YOUR_VPS_IP:3000` (Find your IPv4 with `curl -4 ifconfig.me`).
+* **IPv6 Notice:** If connecting via IPv6, wrap the IP in square brackets: `http://[YOUR_IPV6]:3000`.
+* **Port Conflict Handling:** If port 3000 is already occupied by another service, Messiah automatically rolls over to port `3001` (checked in `pm2 logs`). To set a custom port permanently (e.g. `3050`), edit `.env` (`PORT=3050`) and run `pm2 restart whatsapp-messiah`.
+
+#### 🔄 Keeping Messiah Updated
+* **From the Web Dashboard (Zero SSH):** Go to the **Extras** tab (`/extras.html`) and click **"Update & Restart"**.
+* **From VPS Terminal:** Run the one-line updater:
+  ```bash
+  ./scripts/update.sh
+  ```
+
+#### 📋 PM2 Process Management Cheatsheet
+| Action | Command |
+|---|---|
+| View real-time logs | `pm2 logs whatsapp-messiah` |
+| View recent 50 log lines | `pm2 logs whatsapp-messiah --lines 50` |
+| Check daemon status / memory | `pm2 status` |
+| Restart daemon | `pm2 restart whatsapp-messiah` |
+| Stop daemon | `pm2 stop whatsapp-messiah` |
 
 ---
 
