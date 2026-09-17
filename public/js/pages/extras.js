@@ -391,6 +391,42 @@ async function initMaintenanceDeck() {
     }
   });
 
+  // Factory Reset / Panic Wipe
+  const btnFactoryReset = document.getElementById('btn-factory-reset');
+  btnFactoryReset?.addEventListener('click', async () => {
+    const confirmation = prompt('⚠️ DANGER: This will permanently purge all messages, notes, decrypted media, and WhatsApp session keys!\n\nA safety backup will be created in data/backups before wiping.\n\nTo confirm, type: RESET');
+    if (confirmation !== 'RESET') {
+      return;
+    }
+
+    btnFactoryReset.disabled = true;
+    btnUpdateRestart.disabled = true;
+    btnRestartOnly.disabled = true;
+    if (updaterSpinner) updaterSpinner.style.display = 'inline';
+    if (updaterConsole) {
+      updaterConsole.textContent = '💣 Initiating Factory Reset... Creating safety snapshot and purging vault tables...';
+      updaterConsole.style.color = 'var(--accent-coral)';
+    }
+
+    try {
+      const res = await apiRequest('/api/extras/factory-reset', { method: 'POST' });
+      if (updaterConsole) {
+        updaterConsole.textContent = `✓ ${res.message}\nRebooting fresh daemon...`;
+        updaterConsole.style.color = 'var(--accent-coral)';
+      }
+      pollReconnect('Factory reset complete. Rebooting clean daemon...');
+    } catch (err) {
+      if (updaterConsole) {
+        updaterConsole.textContent = `❌ Factory Reset Error: ${err.message}`;
+        updaterConsole.style.color = 'var(--accent-coral)';
+      }
+      btnFactoryReset.disabled = false;
+      btnUpdateRestart.disabled = false;
+      btnRestartOnly.disabled = false;
+      if (updaterSpinner) updaterSpinner.style.display = 'none';
+    }
+  });
+
   function pollReconnect(statusMsg) {
     let countdown = 6;
     const interval = setInterval(async () => {

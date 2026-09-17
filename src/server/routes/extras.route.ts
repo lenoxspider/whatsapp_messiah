@@ -6,6 +6,8 @@ import { promisify } from 'node:util';
 import { env } from '../../config/env.js';
 import { statusStealRepo } from '../../db/repositories/status_steal.repo.js';
 import { discordService } from '../../services/discord.service.js';
+import { purgeAllData } from '../../db/schema.js';
+import { backupService } from '../../services/backup.service.js';
 
 const execAsync = promisify(exec);
 const isWin = process.platform === 'win32';
@@ -212,4 +214,60 @@ extrasRouter.post('/restart', (req, res) => {
     }
   }, 1000);
 });
+
+// POST trigger full factory reset (purge vault, media, and sessions)
+extrasRouter.post('/factory-reset', async (req, res) => {
+  try {
+    console.log('[Factory Reset] Initiating complete vault & session purge...');
+
+    // 1. Create safety snapshot first so user never loses unrecoverable data accidentally
+    try {
+      await backupService.createBackup({ label: 'pre-factory-reset' });
+      console.log('[Factory Reset] Pre-reset safety snapshot created.');
+    } catch (bErr) {
+      console.warn('[Factory Reset] Safety snapshot failed, proceeding with purge:', bErr);
+    }
+
+    // 2. Clear all SQLite database tables
+    purgeAllData();
+    console.log('[Factory Reset] Database tables purged.');
+
+    // 3. Purge decrypted media vault
+    const mediaDir = path.resolve('data', 'media');
+    if (fs.existsSync(mediaDir)) {
+      for (const file of fs.readdirSync(mediaDir)) {
+        try { fs.unlinkSync(path.join(mediaDir, file)); } catch {}
+      }
+      console.log('[Factory Reset] Media vault cleared.');
+    }
+
+    // 4. Purge Baileys sessions
+    const sDir = path.resolve(env.sessionsDir);
+    if (fs.existsSync(sDir)) {
+      for (const file of fs.readdirSync(sDir)) {
+        try { fs.unlinkSync(path.join(sDir, file)); } catch {}
+      }
+      console.log('[Factory Reset] Sessions cleared.');
+    }
+
+    res.json({
+      success: true,
+      message: 'Factory reset completed. All messages, notes, media, and WhatsApp sessions have been wiped.'
+    });
+
+    // Schedule PM2 restart after 1.5s
+    setTimeout(async () => {
+      try {
+        console.log('[Factory Reset] Restarting daemon after reset...');
+        await execAsync('pm2 restart whatsapp-messiah');
+      } catch (pm2Err) {
+        process.exit(0);
+      }
+    }, 1500);
+  } catch (err: any) {
+    console.error('[Factory Reset] Error during reset:', err);
+    res.status(500).json({ success: false, error: err.message || 'Factory reset failed' });
+  }
+});
+
 

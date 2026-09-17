@@ -175,3 +175,22 @@ export function initializeDatabaseSchema(): void {
   }
 }
 
+export function purgeAllData(): void {
+  const db = getDatabase();
+  db.exec(`
+    DELETE FROM messages;
+    DELETE FROM notes;
+    DELETE FROM notes_fts;
+    DELETE FROM reminders;
+    DELETE FROM calls;
+    DELETE FROM contact_facts;
+    DELETE FROM llm_calls;
+    DELETE FROM message_edits;
+    DELETE FROM contact_dossiers;
+    DELETE FROM captured_statuses;
+    DELETE FROM contacts;
+    VACUUM;
+  `);
+}
+
+
