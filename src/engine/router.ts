@@ -61,7 +61,11 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
     // DIAGNOSTIC: Log stubs / null-message events so we can see business View-Once arriving
     if (!msg.message) {
       const stubJid = msg.key?.remoteJid || 'unknown';
-      console.log(`[Router] ⚠️  msg.message is null (stub/receipt) for ${msg.key?.id} from ${stubJid} (upsert.type=${type})`);
+      if ((msg.key as any)?.isViewOnce) {
+        console.warn(`[Router] ⚠️ WhatsApp delivered an unavailable View-Once stub for ${msg.key?.id} from ${stubJid}.`);
+      } else {
+        console.log(`[Router] ⚠️  msg.message is null (stub/receipt) for ${msg.key?.id} from ${stubJid} (upsert.type=${type})`);
+      }
       continue;
     }
 
@@ -322,22 +326,29 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
       // Discord is alerted strictly for Ephemeral View-Once (Anti-ViewOnce) or Deleted messages (Anti-Revoke).
       const isStatusBroadcast = chatJid === 'status@broadcast' || senderJid === 'status@broadcast';
 
-      if (extracted.isViewOnce && !isStatusBroadcast && env.forwardMediaToDiscord) {
-        const contact = contactRepo.getContact(senderJid);
-        const discordCaption = audioTranscript
-          ? `🎙️ [Transcription]: ${audioTranscript}`
-          : (extracted.caption || text || undefined);
+      const wasViewOnce = Boolean(isViewOnce || extracted.isViewOnce);
+      if (wasViewOnce && !isStatusBroadcast) {
+        if (env.forwardMediaToDiscord) {
+          if (env.discordWebhookUrl) {
+            const contact = contactRepo.getContact(senderJid);
+            const discordCaption = audioTranscript
+              ? `🎙️ [Transcription]: ${audioTranscript}`
+              : (extracted.caption || text || undefined);
 
-        console.log(`[Anti-ViewOnce] Ephemeral View-Once from ${senderPhone} (fromMe=${fromMe}) decrypted, forwarding immediately to Discord.`);
-        await discordService.sendViewOnceAlert({
-          senderPhone,
-          senderName: contact?.name || null,
-          caption: discordCaption,
-          timestamp: Number(msg.messageTimestamp) * 1000 || Date.now(),
-          buffer: extracted.buffer,
-          fileName: extracted.fileName,
-          mimeType: extracted.mimeType
-        });
+            console.log(`[Anti-ViewOnce] Ephemeral View-Once from ${senderPhone} (fromMe=${fromMe}) decrypted, forwarding immediately to Discord.`);
+            await discordService.sendViewOnceAlert({
+              senderPhone,
+              senderName: contact?.name || null,
+              caption: discordCaption,
+              timestamp: Number(msg.messageTimestamp) * 1000 || Date.now(),
+              buffer: extracted.buffer,
+              fileName: extracted.fileName,
+              mimeType: extracted.mimeType
+            });
+          } else {
+            console.warn(`[Anti-ViewOnce] ⚠️ Ephemeral View-Once from ${senderPhone} was decrypted, but DISCORD_WEBHOOK_URL is not configured in .env!`);
+          }
+        }
       }
     }).catch(err => {
       console.warn(`[Media Extraction Error] ${msgId}: ${err.message}`);

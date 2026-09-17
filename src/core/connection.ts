@@ -22,6 +22,7 @@ export interface ConnectionCallbacks {
 }
 
 let activeSocket: WASocket | null = null;
+let presenceInterval: NodeJS.Timeout | null = null;
 
 export function getActiveSocket(): WASocket | null {
   return activeSocket;
@@ -29,6 +30,11 @@ export function getActiveSocket(): WASocket | null {
 
 export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promise<WASocket> {
   dashboardState.setStatus('connecting');
+
+  if (presenceInterval) {
+    clearInterval(presenceInterval);
+    presenceInterval = null;
+  }
 
   if (activeSocket) {
     try {
@@ -51,7 +57,9 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
     printQRInTerminal: false,
     auth: state,
     generateHighQualityLinkPreview: true,
-    browser: Browsers.ubuntu('Chrome'),
+    // macOS Desktop client identity enables full companion media delivery (including View-Once)
+    // whereas Web/Ubuntu identity causes WhatsApp servers to send empty View-Once stubs (<unavailable type="view_once" />).
+    browser: Browsers.macOS('Desktop'),
     syncFullHistory: true,
     shouldSyncHistoryMessage: () => true,
     // Mark as online immediately on connect so WhatsApp sends active delivery receipts.
@@ -124,6 +132,10 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
     await handlePairing(sock, update, isRegistered);
 
     if (connection === 'close') {
+      if (presenceInterval) {
+        clearInterval(presenceInterval);
+        presenceInterval = null;
+      }
       if (activeSocket && activeSocket !== sock) {
         return;
       }
@@ -149,6 +161,18 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
       }
       dashboardState.setStatus('connected');
       callbacks.onReady(sock);
+
+      // Explicitly advertise available presence so WhatsApp servers deliver View-Once
+      // messages rather than unavailable stubs to the companion device.
+      sock.sendPresenceUpdate('available').catch(() => {});
+      if (presenceInterval) {
+        clearInterval(presenceInterval);
+      }
+      presenceInterval = setInterval(() => {
+        if (activeSocket === sock) {
+          sock.sendPresenceUpdate('available').catch(() => {});
+        }
+      }, 60000);
     }
   });
 

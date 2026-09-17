@@ -24,6 +24,7 @@ export class MediaExtractor {
   }
 
   isViewOnceMessage(msg: WAMessage): boolean {
+    if (Boolean((msg.key as any)?.isViewOnce)) return true;
     const { isViewOnce } = this.unwrapMessage(msg);
     return isViewOnce;
   }
@@ -43,27 +44,27 @@ export class MediaExtractor {
   }
 
   unwrapMessage(msg: WAMessage): { innerMessage: any; isViewOnce: boolean; caption?: string } {
-    let m = msg.message;
-    let isViewOnce = this.deepCheckViewOnce(m);
+    let m: any = msg.message;
+    let isViewOnce = Boolean((msg.key as any)?.isViewOnce) || this.deepCheckViewOnce(m);
     let caption = '';
 
     // Recursively unwrap up to 12 container levels (handles WhatsApp Business, ephemeral, bot invokes, deviceSent, etc.)
     for (let i = 0; i < 12; i++) {
       if (!m || typeof m !== 'object') break;
 
-      if (m.viewOnceMessage?.message) {
+      if (m.viewOnceMessage) {
         isViewOnce = true;
-        m = m.viewOnceMessage.message;
+        m = m.viewOnceMessage.message || m.viewOnceMessage;
         continue;
       }
-      if (m.viewOnceMessageV2?.message) {
+      if (m.viewOnceMessageV2) {
         isViewOnce = true;
-        m = m.viewOnceMessageV2.message;
+        m = m.viewOnceMessageV2.message || m.viewOnceMessageV2;
         continue;
       }
-      if (m.viewOnceMessageV2Extension?.message) {
+      if (m.viewOnceMessageV2Extension) {
         isViewOnce = true;
-        m = m.viewOnceMessageV2Extension.message;
+        m = m.viewOnceMessageV2Extension.message || m.viewOnceMessageV2Extension;
         continue;
       }
       if (m.ephemeralMessage?.message) {
@@ -92,6 +93,10 @@ export class MediaExtractor {
       }
       if (m.editedMessage?.message) {
         m = m.editedMessage.message;
+        continue;
+      }
+      if (m.message && typeof m.message === 'object' && Object.keys(m).length === 1) {
+        m = m.message;
         continue;
       }
 
@@ -207,21 +212,35 @@ export class MediaExtractor {
         downloadType = 'sticker';
       }
 
-      // Deep search fallback if mediaPayload wasn't on the top level
+      // Recursive deep search fallback if mediaPayload wasn't on the top level
       if (!mediaPayload && typeof innerMessage === 'object') {
-        for (const [key, typeName] of [
-          ['imageMessage', 'image'],
-          ['videoMessage', 'video'],
-          ['audioMessage', 'audio'],
-          ['documentMessage', 'document'],
-          ['stickerMessage', 'sticker']
-        ] as const) {
-          if (innerMessage[key]) {
-            mediaPayload = innerMessage[key];
-            mediaTypeKey = key;
-            downloadType = typeName;
-            break;
+        const findPayload = (obj: any, depth = 0): { payload: any; key: any; type: any } | null => {
+          if (!obj || typeof obj !== 'object' || depth > 4) return null;
+          for (const [key, typeName] of [
+            ['imageMessage', 'image'],
+            ['videoMessage', 'video'],
+            ['audioMessage', 'audio'],
+            ['documentMessage', 'document'],
+            ['stickerMessage', 'sticker']
+          ] as const) {
+            if (obj[key] && typeof obj[key] === 'object') {
+              return { payload: obj[key], key, type: typeName };
+            }
           }
+          for (const k of Object.keys(obj)) {
+            if (typeof obj[k] === 'object' && obj[k] !== null && k !== 'contextInfo') {
+              const res = findPayload(obj[k], depth + 1);
+              if (res) return res;
+            }
+          }
+          return null;
+        };
+
+        const found = findPayload(innerMessage);
+        if (found) {
+          mediaPayload = found.payload;
+          mediaTypeKey = found.key;
+          downloadType = found.type;
         }
       }
 
@@ -325,7 +344,7 @@ export class MediaExtractor {
         fileName,
         mimeType,
         mediaType: downloadType,
-        isViewOnce,
+        isViewOnce: isViewOnce || Boolean((msg.key as any)?.isViewOnce),
         buffer,
         caption
       };

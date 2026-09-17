@@ -282,6 +282,56 @@ if (allPresent && AGENT_TOOLS.length >= 12) {
   console.error('❌ Tool registry missing tools. Found:', registeredToolNames);
 }
 
+// Test 26: Anti-ViewOnce Detection & Container Unwrapping
+import { mediaExtractor } from '../src/engine/messiah/media.js';
+
+const voV1Msg: any = {
+  key: { id: 'VO_TEST_1', remoteJid: '12345@s.whatsapp.net', fromMe: false },
+  message: {
+    viewOnceMessage: {
+      message: {
+        imageMessage: { url: 'https://example.com/img1', mimetype: 'image/jpeg' }
+      }
+    }
+  }
+};
+
+const voV2Msg: any = {
+  key: { id: 'VO_TEST_2', remoteJid: '12345@s.whatsapp.net', fromMe: false },
+  message: {
+    viewOnceMessageV2: {
+      message: {
+        videoMessage: { url: 'https://example.com/vid1', mimetype: 'video/mp4' }
+      }
+    }
+  }
+};
+
+const voDirectMediaMsg: any = {
+  key: { id: 'VO_TEST_3', remoteJid: '12345@s.whatsapp.net', fromMe: false },
+  message: {
+    imageMessage: { url: 'https://example.com/img2', mimetype: 'image/jpeg', viewOnce: true }
+  }
+};
+
+const voKeyMsg: any = {
+  key: { id: 'VO_TEST_4', remoteJid: '12345@s.whatsapp.net', fromMe: false, isViewOnce: true },
+  message: {
+    imageMessage: { url: 'https://example.com/img3', mimetype: 'image/jpeg' }
+  }
+};
+
+const isV1 = mediaExtractor.isViewOnceMessage(voV1Msg);
+const isV2 = mediaExtractor.isViewOnceMessage(voV2Msg);
+const isDirect = mediaExtractor.isViewOnceMessage(voDirectMediaMsg);
+const isKey = mediaExtractor.isViewOnceMessage(voKeyMsg);
+
+if (isV1 && isV2 && isDirect && isKey) {
+  console.log('✅ 26. Anti-ViewOnce detection & container unwrapping verified across all protocol formats.');
+} else {
+  console.error('❌ View-once detection failed:', { isV1, isV2, isDirect, isKey });
+}
+
 console.log('\n🎉 ALL CORE, PHASE 1, PHASE 2, PHASE 3, AGENT CAPABILITIES, AND UNIVERSAL ACTION ENGINE VERIFICATIONS PASSED SUCCESSFULLY!');
 
 
