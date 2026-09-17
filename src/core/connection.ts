@@ -52,6 +52,10 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
     auth: state,
     generateHighQualityLinkPreview: true,
     browser: Browsers.ubuntu('Chrome'),
+    // Mark as online immediately on connect so WhatsApp sends active delivery receipts.
+    // Without this, sendActiveReceipts stays false → receipts sent as 'inactive' →
+    // WhatsApp Business servers skip View-Once delivery to what they see as an offline device.
+    markOnlineOnConnect: true,
     getMessage: async (key) => {
       if (key.id) {
         const msg = messageRepo.getMessageById(key.id);
