@@ -4,6 +4,7 @@ import { reminderRepo } from '../src/db/repositories/reminder.repo.js';
 import { contactRepo } from '../src/db/repositories/contact.repo.js';
 import { messageRepo } from '../src/db/repositories/message.repo.js';
 import { ContactTier } from '../src/types/contact.js';
+import { routeIncomingMessage } from '../src/engine/router.js';
 
 console.log('--- RUNNING MESSIAH COMPONENT INTEGRITY CHECKS ---');
 
@@ -209,6 +210,37 @@ if (match && match[1].includes('pitch deck ready')) {
   }
 } else {
   console.error('❌ Completion tag regex matching failed.');
+}
+
+// 13. Test WhatsApp Channel Isolation
+const channelMsgId = `CHANNEL_TEST_${Date.now()}`;
+const mockSock: any = {
+  user: { id: '1234567890:1@s.whatsapp.net' },
+  sendMessage: async () => {}
+};
+
+await routeIncomingMessage(mockSock, {
+  messages: [{
+    key: {
+      id: channelMsgId,
+      remoteJid: '120363999999999999@newsletter',
+      fromMe: false
+    },
+    message: {
+      conversation: 'Public channel post broadcast'
+    },
+    messageTimestamp: Math.floor(Date.now() / 1000)
+  }],
+  type: 'notify'
+});
+
+const channelInDb = messageRepo.getMessageById(channelMsgId);
+const channelContact = contactRepo.getContact('120363999999999999@newsletter');
+
+if (!channelInDb && !channelContact) {
+  console.log('✅ 21. WhatsApp Channel isolation verified: @newsletter broadcasts completely dropped with 0 side-effects.');
+} else {
+  console.error('❌ Channel message leaked into database or contacts.');
 }
 
 console.log('\n🎉 ALL CORE, PHASE 1, PHASE 2, PHASE 3, AND AGENT CAPABILITY VERIFICATIONS PASSED SUCCESSFULLY!');

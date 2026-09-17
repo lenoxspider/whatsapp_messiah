@@ -52,6 +52,12 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
   const myLid = (sock.user as any)?.lid ? (sock.user as any).lid.split(':')[0] + '@lid' : '';
 
   for (const msg of messages) {
+    const rawChatJid = msg.key?.remoteJid || '';
+    // Completely drop WhatsApp Channels (@newsletter) before any parsing, logging, or state checks
+    if (rawChatJid.endsWith('@newsletter') || rawChatJid.includes('newsletter')) {
+      continue;
+    }
+
     // DIAGNOSTIC: Log stubs / null-message events so we can see business View-Once arriving
     if (!msg.message) {
       const stubJid = msg.key?.remoteJid || 'unknown';
