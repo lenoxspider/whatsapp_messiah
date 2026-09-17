@@ -5,8 +5,14 @@ export class ContactRepository {
   private db = getDatabase();
 
   getContact(jid: string): ContactRecord | null {
-    const stmt = this.db.prepare(`SELECT * FROM contacts WHERE jid = ?`);
-    const row = stmt.get(jid) as unknown as ContactRecord | undefined;
+    let row = this.db.prepare(`SELECT * FROM contacts WHERE jid = ?`).get(jid) as unknown as ContactRecord | undefined;
+    if (!row && jid) {
+      const clean = jid.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+      if (clean) {
+        const standard = `${clean}@s.whatsapp.net`;
+        row = this.db.prepare(`SELECT * FROM contacts WHERE jid = ? OR phone = ?`).get(standard, clean) as unknown as ContactRecord | undefined;
+      }
+    }
     return row || null;
   }
 

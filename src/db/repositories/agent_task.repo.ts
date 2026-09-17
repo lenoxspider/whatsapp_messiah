@@ -36,11 +36,17 @@ export class AgentTaskRepository {
 
   getActiveTaskForContact(contactJid: string): AgentTask | null {
     const db = getDatabase();
+    const cleanPhone = contactJid.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+    const standardJid = cleanPhone ? `${cleanPhone}@s.whatsapp.net` : contactJid;
     return (db.prepare(`
       SELECT * FROM agent_tasks
-      WHERE contact_jid = ? AND status IN ('pending', 'in_progress')
+      WHERE (
+        contact_jid = ? OR 
+        contact_jid = ? OR 
+        contact_jid LIKE ?
+      ) AND status IN ('pending', 'in_progress')
       ORDER BY scheduled_at ASC LIMIT 1
-    `).get(contactJid) as unknown as AgentTask) || null;
+    `).get(contactJid, standardJid, `%${cleanPhone}%`) as unknown as AgentTask) || null;
   }
 
   getDueTasks(now: number = Date.now()): AgentTask[] {

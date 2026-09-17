@@ -83,22 +83,18 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
     }
 
     const text = extractMessageText(msg.message);
-    const chatJid = msg.key.remoteJid || '';
     const fromMe = Boolean(msg.key.fromMe);
-    const isGroup = chatJid.endsWith('@g.us');
-    const isStatus = chatJid === 'status@broadcast';
-    const isChannel = chatJid.endsWith('@newsletter');
+    const isGroup = rawChatJid.endsWith('@g.us');
+    const isStatus = rawChatJid === 'status@broadcast';
 
-    // 0. WHATSAPP CHANNELS (@newsletter)
-    // WhatsApp Channels are 1-way public broadcast feeds (news, brands, creators).
-    // They are not interactive contacts or direct chats, so we silently ignore them to prevent
-    // channel updates from polluting contacts, triggering Anomaly Radar, or engaging autopilot.
-    if (isChannel) {
-      continue;
-    }
+    const chatUserPart = rawChatJid.split('@')[0].split(':')[0];
+    const chatPhone = chatUserPart.replace(/[^0-9]/g, '');
+    const chatJid = (!isGroup && !isStatus && chatPhone) ? `${chatPhone}@s.whatsapp.net` : rawChatJid;
 
-    const senderJid = (isGroup || isStatus) ? (msg.key.participant || chatJid) : chatJid;
-    const senderPhone = senderJid.split('@')[0].replace(/[^0-9]/g, '');
+    const rawSenderJid = (isGroup || isStatus) ? (msg.key.participant || rawChatJid) : rawChatJid;
+    const senderUserPart = rawSenderJid.split('@')[0].split(':')[0];
+    const senderPhone = senderUserPart.replace(/[^0-9]/g, '');
+    const senderJid = (!isGroup && !isStatus && senderPhone) ? `${senderPhone}@s.whatsapp.net` : rawSenderJid;
     const messageType = Object.keys(msg.message)[0] || 'unknown';
 
     // Ignore bot's own output to prevent infinite loops

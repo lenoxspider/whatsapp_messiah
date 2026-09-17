@@ -82,12 +82,15 @@ export class MessiahHandler {
     // 4. Autonomous Autopilot & Active Task Check
     const isContactAutopilot = contact.autopilot_enabled === 1;
     const isGlobalAutopilot = env.ghostHandlerEnabled && env.autonomousGhost;
-    const activeTask = agentTaskRepo.getActiveTaskForContact(contact.jid);
+    const activeTask = agentTaskRepo.getActiveTaskForContact(contact.jid) ||
+                       agentTaskRepo.getActiveTaskForContact(message.senderJid) ||
+                       agentTaskRepo.getActiveTaskForContact(message.chatJid);
 
-    // Autopilot runs if explicitly enabled on contact, if global autopilot is on, or if there is an active goal assigned
+    // Autopilot runs if explicitly enabled on contact, if global autopilot is on, or if there is an active mission assigned
     const isAutopilotActive = (isContactAutopilot || isGlobalAutopilot || Boolean(activeTask)) && Boolean(env.openaiApiKey);
 
     if (!isAutopilotActive) {
+      systemLogger.info('Ghost', `Ignoring incoming message from ${contact.name || contact.phone}: Autopilot not active and no active task.`);
       return; // Autopilot disabled for this contact
     }
 
@@ -128,6 +131,10 @@ export class MessiahHandler {
 
     // 10. Build tier-specific system prompt with active living memory
     let systemPrompt = personaEngine.buildSystemPrompt(contact, formattedHistory, vaultContext, revokedCount, voiceProfile);
+    if (!systemPrompt && activeTask) {
+      // If contact was set to IGNORE tier, but owner explicitly delegated an active mission, proceed with mission
+      systemPrompt = `You are replying directly as the operator to ${contact.name || contact.phone} on WhatsApp.\nCORE RULES: Be natural, brief, casual, no AI tropes.\nRecent chat history:\n${formattedHistory}`;
+    }
     if (!systemPrompt) {
       return; // IGNORE tier or persona suppressed
     }
@@ -181,6 +188,18 @@ Only append [TASK_COMPLETED: ...] if the goal is truly accomplished!`;
         if (cleanReply) {
           systemLogger.success('Ghost', `Autonomous reply dispatched to ${contact.name || contact.phone} (Tier ${contact.tier})`);
           await presenceSimulator.simulateTypingAndSend(sock, message.chatJid, cleanReply, message.text.length);
+
+          // Save sent reply to message repository for conversation continuity
+          messageRepo.saveMessage({
+            id: `agent_${Date.now()}`,
+            chatJid: message.chatJid,
+            senderJid: env.ownerJid || message.chatJid,
+            fromMe: true,
+            messageType: 'conversation',
+            content: cleanReply,
+            rawPayload: { key: { remoteJid: message.chatJid, fromMe: true } },
+            timestamp: Date.now()
+          });
 
           // Alert owner on Discord whenever Autopilot takes action
           await discordService.sendAgentTaskAlert({
