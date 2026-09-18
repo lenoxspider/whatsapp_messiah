@@ -35,9 +35,12 @@ export class MediaExtractor {
     if (obj.isViewOnce === true) return true;
 
     for (const key of Object.keys(obj)) {
-      if (/viewonce/i.test(key) && Boolean(obj[key])) return true;
-      if (typeof obj[key] === 'object' && obj[key] !== null) {
-        if (this.deepCheckViewOnce(obj[key], depth + 1)) return true;
+      const val = obj[key];
+      if (!val) continue;
+      if (typeof val === 'object') {
+        if (this.deepCheckViewOnce(val, depth + 1)) return true;
+      } else if (/viewonce/i.test(key) && (val === true || val === 'true' || val === 1)) {
+        return true;
       }
     }
     return false;

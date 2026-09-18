@@ -41,7 +41,7 @@ export class MessageRepository {
   updateMedia(id: string, mediaPath: string, mediaMimetype: string, isViewOnce: boolean = false): void {
     const stmt = this.db.prepare(`
       UPDATE messages
-      SET media_path = ?, media_mimetype = ?, is_view_once = ?
+      SET media_path = ?, media_mimetype = ?, is_view_once = CASE WHEN ? = 1 THEN 1 ELSE is_view_once END
       WHERE id = ?
     `);
     stmt.run(mediaPath, mediaMimetype, isViewOnce ? 1 : 0, id);

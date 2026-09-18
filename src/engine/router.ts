@@ -140,8 +140,7 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
                 const buf = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes, 'base64');
                 try {
                   const decoded = BaileysProto.WebMessageInfo.decode(buf);
-                  const plainObj = BaileysProto.WebMessageInfo.toObject(decoded, { defaults: true });
-                  const pdoId = plainObj?.key?.id || decoded?.key?.id;
+                  const pdoId = decoded?.key?.id;
 
                   if (pdoId && decodedPdoIds.has(pdoId)) {
                     console.log(`[Router] ℹ️ Type 17 PDO response for ${pdoId} already decoded, skipping duplicate.`);
@@ -149,12 +148,12 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
                   }
                   if (pdoId) decodedPdoIds.add(pdoId);
 
-                  if (plainObj?.message) {
+                  if (decoded?.message) {
                     console.log(`[Router] 📦 Decoded View-Once placeholder resend for ${pdoId}`);
                     // Explicitly tag View-Once flag on re-injected message object so it is preserved
-                    (plainObj as any).isViewOnce = true;
-                    if (plainObj.key) (plainObj.key as any).isViewOnce = true;
-                    upsert.messages.push(plainObj as any);
+                    (decoded as any).isViewOnce = true;
+                    if (decoded.key) (decoded.key as any).isViewOnce = true;
+                    upsert.messages.push(decoded as any);
                   }
                 } catch (protoErr: any) {
                   console.warn('[Router] Failed to decode placeholder resend protobuf:', protoErr.message);
@@ -178,9 +177,10 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
     const isGroup = rawChatJid.endsWith('@g.us');
     const isStatus = rawChatJid === 'status@broadcast';
 
+    const isLid = rawChatJid.endsWith('@lid');
     const chatUserPart = rawChatJid.split('@')[0].split(':')[0];
-    const chatPhone = chatUserPart.replace(/[^0-9]/g, '');
-    const chatJid = (!isGroup && !isStatus && chatPhone) ? `${chatPhone}@s.whatsapp.net` : rawChatJid;
+    const chatPhone = !isLid ? chatUserPart.replace(/[^0-9]/g, '') : '';
+    const chatJid = (!isGroup && !isStatus && !isLid && chatPhone) ? `${chatPhone}@s.whatsapp.net` : rawChatJid;
 
     const rawSenderJid = (isGroup || isStatus) ? (msg.key.participant || rawChatJid) : rawChatJid;
     const senderUserPart = rawSenderJid.split('@')[0].split(':')[0];
@@ -323,10 +323,14 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
     });
 
     // Determine self-chat identity
-    const isSelfChat = fromMe && (
+    const isSelfChat = fromMe && !isGroup && !isStatus && (
       (myJid && chatJid === myJid) ||
-      (myPhone && chatJid.startsWith(myPhone)) ||
-      (myLid && chatJid === myLid)
+      (myPhone && chatPhone && chatPhone === myPhone) ||
+      (myPhone && rawChatJid.includes(myPhone)) ||
+      (myLid && (rawChatJid === myLid || chatJid === myLid)) ||
+      (rawChatJid === (sock.user as any)?.id) ||
+      (rawChatJid === (sock.user as any)?.lid) ||
+      (rawChatJid === myJid)
     );
 
     const ctx: IncomingMessageContext = {
@@ -353,13 +357,16 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
       outerRaw.includes('audioMessage');
 
     if (mightHaveMedia) {
-      // Eager pre-download for Tier 1 & Tier 2 priority contacts
+      // Shared single media extraction task (prevents duplicate download calls)
+      const mediaExtractionTask = mediaExtractor.extractAndSaveMedia(msg);
+
+      // Eager pre-download check for Tier 1 & Tier 2 priority contacts
       const senderContact = contactRepo.getContact(senderJid);
       const isPriorityContact = senderContact ? (senderContact.tier === ContactTier.TIER1_INNER || senderContact.tier === ContactTier.TIER2_ACQUAINTANCE) : false;
 
       if (isPriorityContact) {
         try {
-          const eagerExtracted = await mediaExtractor.extractAndSaveMedia(msg);
+          const eagerExtracted = await mediaExtractionTask;
           if (eagerExtracted) {
             messageRepo.updateMedia(msgId, eagerExtracted.filePath, eagerExtracted.mimeType, eagerExtracted.isViewOnce);
             console.log(`[Anti-Revoke/Eager] ⚡ Eagerly saved media from Tier ${senderContact?.tier} contact (+${senderPhone}) -> ${eagerExtracted.fileName}`);
@@ -369,7 +376,7 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
         }
       }
 
-      mediaExtractor.extractAndSaveMedia(msg).then(async (extracted) => {
+      mediaExtractionTask.then(async (extracted) => {
         if (!extracted) return;
 
         messageRepo.updateMedia(msgId, extracted.filePath, extracted.mimeType, extracted.isViewOnce);
@@ -466,6 +473,7 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
             } else if (extracted.mediaType === 'audio') {
               mediaMsg.audio = extracted.buffer;
               mediaMsg.mimetype = extracted.mimeType;
+              mediaMsg.ptt = true;
             } else {
               mediaMsg.document = extracted.buffer;
               mediaMsg.mimetype = extracted.mimeType;
