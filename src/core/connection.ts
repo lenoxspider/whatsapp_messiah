@@ -60,9 +60,8 @@ export async function startWhatsAppSocket(callbacks: ConnectionCallbacks): Promi
     auth: state,
     generateHighQualityLinkPreview: true,
     // macOS Desktop enables full View-Once media delivery from WhatsApp servers.
-    // However, it causes 428 rejection on UNREGISTERED (fresh) sessions.
-    // Solution: use Ubuntu during pairing, switch to macOS Desktop once registered.
-    browser: Browsers.ubuntu('Chrome'),
+    // Use Ubuntu during initial pairing to avoid 428 rejection, then switch to macOS Desktop once registered.
+    browser: isAlreadyRegistered ? Browsers.macOS('Desktop') : Browsers.ubuntu('Chrome'),
     syncFullHistory: true,
     shouldSyncHistoryMessage: () => true,
     markOnlineOnConnect: false,
