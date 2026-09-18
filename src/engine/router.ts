@@ -265,18 +265,21 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
           }
 
           // Forward directly to Owner WhatsApp (if configured)
-          if (env.ownerJid && extractedMedia) {
+          if (env.ownerJid) {
             try {
               const header = `📸 *[STATUS CAPTURED]*\n\n` +
                 `👤 *From:* ${contact?.name || 'Contact'} (+${senderPhone})\n` +
-                `💬 *Caption:* ${caption || '[No caption]'}`;
+                `💬 *Content:* ${caption || text || '[No text]'}`;
 
-              const msgObj: any = { caption: header };
-              if (extractedMedia.mediaType === 'image') msgObj.image = extractedMedia.buffer;
-              else if (extractedMedia.mediaType === 'video') msgObj.video = extractedMedia.buffer;
-              else msgObj.document = extractedMedia.buffer;
-
-              await sock.sendMessage(env.ownerJid, msgObj);
+              if (extractedMedia) {
+                const msgObj: any = { caption: header };
+                if (extractedMedia.mediaType === 'image') msgObj.image = extractedMedia.buffer;
+                else if (extractedMedia.mediaType === 'video') msgObj.video = extractedMedia.buffer;
+                else msgObj.document = extractedMedia.buffer;
+                await sock.sendMessage(env.ownerJid, msgObj);
+              } else if (text) {
+                await sock.sendMessage(env.ownerJid, { text: header });
+              }
             } catch {}
           }
         } catch (stErr: any) {
