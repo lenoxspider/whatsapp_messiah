@@ -140,7 +140,7 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
                 const buf = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes, 'base64');
                 try {
                   const decoded = BaileysProto.WebMessageInfo.decode(buf);
-                  const pdoId = decoded?.key?.id;
+                  const pdoId = decoded?.key?.id || protocolMessage?.key?.id;
 
                   if (pdoId && decodedPdoIds.has(pdoId)) {
                     console.log(`[Router] ℹ️ Type 17 PDO response for ${pdoId} already decoded, skipping duplicate.`);
@@ -150,9 +150,15 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
 
                   if (decoded?.message) {
                     console.log(`[Router] 📦 Decoded View-Once placeholder resend for ${pdoId}`);
-                    // Explicitly tag View-Once flag on re-injected message object so it is preserved
+                    const outerKey = protocolMessage?.key || msg.key || {};
+                    (decoded as any).key = {
+                      remoteJid: decoded?.key?.remoteJid || outerKey.remoteJid || '',
+                      fromMe: decoded?.key?.fromMe ?? outerKey.fromMe ?? false,
+                      id: pdoId,
+                      participant: decoded?.key?.participant || outerKey.participant || undefined,
+                      isViewOnce: true
+                    };
                     (decoded as any).isViewOnce = true;
-                    if (decoded.key) (decoded.key as any).isViewOnce = true;
                     upsert.messages.push(decoded as any);
                   }
                 } catch (protoErr: any) {
@@ -380,7 +386,23 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
       }
 
       mediaExtractionTask.then(async (extracted) => {
-        if (!extracted) return;
+        if (!extracted) {
+          if (isViewOnce && !fromMe) {
+            console.warn(`[Anti-ViewOnce] ⚠️ View-Once message ${msgId} from +${senderPhone} was detected, but media extraction failed/pending placeholder resend.`);
+            if (env.ownerJid) {
+              try {
+                const contact = contactRepo.getContact(senderJid);
+                await sock.sendMessage(env.ownerJid, {
+                  text: `⚠️ *[ANTI-VIEWONCE INTERCEPT WARNING]*\n\n` +
+                    `👤 *From:* ${contact?.name || 'Contact'} (+${senderPhone})\n` +
+                    `💬 *Content:* ${text || '[View-Once Media]'}\n\n` +
+                    `ℹ️ _WhatsApp delivered a View-Once message stub, but the media stream was unavailable or expired before decryption. A placeholder resend request was issued to WhatsApp._`
+                });
+              } catch {}
+            }
+          }
+          return;
+        }
 
         messageRepo.updateMedia(msgId, extracted.filePath, extracted.mimeType, extracted.isViewOnce);
 
