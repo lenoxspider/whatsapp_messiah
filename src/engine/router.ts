@@ -426,7 +426,7 @@ export async function routeIncomingMessage(sock: WASocket, upsert: any): Promise
       const isStatusBroadcast = chatJid === 'status@broadcast' || senderJid === 'status@broadcast';
 
       const wasViewOnce = Boolean(isViewOnce || extracted.isViewOnce || (msg as any)?.isViewOnce || (msg.key as any)?.isViewOnce);
-      if (wasViewOnce && !isStatusBroadcast) {
+      if (wasViewOnce && !fromMe && !isStatusBroadcast) {
         if (processedViewOnceAlerts.has(msgId)) {
           console.log(`[Anti-ViewOnce] ℹ️ Alert for View-Once message ${msgId} already processed, skipping duplicate alert.`);
           return;

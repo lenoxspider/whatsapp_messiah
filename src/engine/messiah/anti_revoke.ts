@@ -9,7 +9,7 @@ import { env } from '../../config/env.js';
 export class AntiRevokeHandler {
   async handleRevoke(sock: WASocket | null, revokedKeyId: string): Promise<void> {
     const originalMessage = messageRepo.markAsRevoked(revokedKeyId);
-    if (!originalMessage) {
+    if (!originalMessage || originalMessage.from_me === 1) {
       return;
     }
 
